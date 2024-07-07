@@ -1,8 +1,5 @@
 #!/bin/bash
 while true; do
-  echo "Generating new H3 cells map..."
-  # Run the Go script to generate the GeoJSON file
-  go run generate.go
 
   echo "Starting server..."
   # Run the HTTP server to serve the files
