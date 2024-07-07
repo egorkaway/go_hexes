@@ -7,22 +7,21 @@ import (
   "log"
   "net/http"
   "os"
+  "strconv"
   "sync"
   "time"
 
   _ "github.com/lib/pq"
   h3 "github.com/uber/h3-go/v3"
+  "github.com/joho/godotenv"
 )
 
-// Connection details
-const (
-  host       = "ep-falling-band-74360917.us-east-2.aws.neon.tech"
-  port       = 5432
-  user       = "neon"
-  password   = "JQhwUk8H7vNf"
-  dbname     = "neondb"
-  endpointID = "ep-falling-band-74360917"
-)
+// LoadEnvironmentVariables loads environment variables from a .env file if it exists
+func LoadEnvironmentVariables() {
+  if err := godotenv.Load(); err != nil {
+    log.Println("No .env file found, using environment variables")
+  }
+}
 
 var (
   h3CellsMap = make(map[string]bool)
@@ -31,12 +30,22 @@ var (
 
 func generateGeoJSON() {
   // Function to establish connection
+  host := os.Getenv("DB_HOST")
+  port := os.Getenv("DB_PORT")
+  user := os.Getenv("DB_USER")
+  password := os.Getenv("DB_PASSWORD")
+  dbname := os.Getenv("DB_NAME")
+  endpointID := os.Getenv("ENDPOINT_ID")
+
+  portNum, err := strconv.Atoi(port)
+  if err != nil {
+    log.Fatalf("Invalid port number: %v", err)
+  }
+
   psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=require options=endpoint=%s",
-    host, port, user, password, dbname, endpointID)
+    host, portNum, user, password, dbname, endpointID)
 
   var db *sql.DB
-  var err error
-
   // Retry loop for the connection
   for attempts := 0; attempts < 5; attempts++ {
     db, err = sql.Open("postgres", psqlInfo)
@@ -155,6 +164,8 @@ func generateGeoJSON() {
 }
 
 func main() {
+  LoadEnvironmentVariables()
+
   go func() {
     for {
       generateGeoJSON()
