@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>H3 Parent Cells Map</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .temp-label {
+            font-size: 8px;
+            color: black; /* Change label color to black */
+            text-align: center;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([50, 10], 5);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        function getColor(temperature) {
+            // Generate color from temperature
+            const maxTemp = 50;
+            const minTemp = -30;
+            const tempRange = maxTemp - minTemp;
+            const percentage = (temperature - minTemp) / tempRange;
+            const hue = (1 - percentage) * 240; // From blue to red
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+
+        fetch('h3parents.geojson')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            L.geoJSON(data, {
+                style: function (feature) {
+                    var temperature = feature.properties.temperature;
+                    var fillColor = getColor(temperature);
+
+                    return {
+                        color: "none", // Remove the outline
+                        fillColor: fillColor,
+                        fillOpacity: 0.5
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    // Create a divIcon for the temperature label
+                    var temperature = feature.properties.temperature;
+                    var label = L.divIcon({
+                        className: 'temp-label',
+                        html: Math.round(temperature) + '°C'
+                    });
+
+                    // Calculate the center of the hex to position the label
+                    var coords = feature.geometry.coordinates[0];
+                    var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
+                    var polygon = L.polygon(latlngs);
+                    var center = polygon.getBounds().getCenter();
+
+                    L.marker(center, { icon: label }).addTo(map);
+                }
+            }).addTo(map);
+        });
+    </script>
+</body>
+</html>
