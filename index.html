@@ -44,7 +44,7 @@
             return `hsl(${hue}, 100%, 50%)`;
         }
 
-        fetch('h3parents.geojson')
+        fetch('http/h3parents.geojson')
         .then(function(response) {
             return response.json();
         })
