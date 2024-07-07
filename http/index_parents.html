@@ -14,6 +14,16 @@
             width: 100%;
             height: 100%;
         }
+        .temp-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: black; /* Change label color to black */
+            text-align: center;
+            line-height: 1.2;
+            background-color: rgba(255, 255, 255, 0.7); /* Add a semi-transparent background for readability */
+            border-radius: 3px; /* Add some border radius for better appearance */
+            padding: 2px 5px; /* Add padding for better readability */
+        }
     </style>
 </head>
 <body>
@@ -28,6 +38,16 @@
             maxZoom: 19
         }).addTo(map);
 
+        function getColor(temperature) {
+            // Generate color from temperature
+            const maxTemp = 50;
+            const minTemp = -10;
+            const tempRange = maxTemp - minTemp;
+            const percentage = (temperature - minTemp) / tempRange;
+            const hue = (1 - percentage) * 240; // From blue to red
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+
         fetch('h3parents.geojson')
         .then(function(response) {
             return response.json();
@@ -35,11 +55,30 @@
         .then(function(data) {
             L.geoJSON(data, {
                 style: function (feature) {
+                    var temperature = feature.properties.temperature;
+                    var fillColor = getColor(temperature);
+
                     return {
-                        color: '#000',  // Default border color
-                        fillColor: '#ff7800',  // Default fill color (orange)
+                        color: "none", // Remove the outline
+                        fillColor: fillColor,
                         fillOpacity: 0.5
                     };
+                },
+                onEachFeature: function (feature, layer) {
+                    // Create a divIcon for the temperature label
+                    var temperature = feature.properties.temperature;
+                    var label = L.divIcon({
+                        className: 'temp-label',
+                        html: Math.round(temperature) + '°C'
+                    });
+
+                    // Calculate the center of the hex to position the label
+                    var coords = feature.geometry.coordinates[0];
+                    var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
+                    var polygon = L.polygon(latlngs);
+                    var center = polygon.getBounds().getCenter();
+
+                    L.marker(center, { icon: label }).addTo(map);
                 }
             }).addTo(map);
         });
