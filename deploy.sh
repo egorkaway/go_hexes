@@ -3,7 +3,7 @@ while true; do
 
   echo "Starting server..."
   # Run the HTTP server to serve the files
-  go run server.go &
+  go run main.go &
 
   # Save server PID
   SERVER_PID=$!
