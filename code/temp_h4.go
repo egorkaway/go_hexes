@@ -88,19 +88,22 @@ func generateGeoJSONFeature(h3cell string, temperature float64) (GeoJSONFeature,
 	}, nil
 }
 
-func fetchWeatherDataForH3Cells(outputFile string) {
-	// Sample H3 cells
-	h3cells := []string{
-		"831968fffffffff", "832964fffffffff", "8453a95ffffffff",
-		"852e0c5ffffffff", "843cc774fffffff", "8529ea1ffffffff",
-		"851991affffffff", "85344b7ffffffff", "852a047ffffffff",
-		"843cc775fffffff", "85b1d577ffffffff", "853847bfffffffff",
+func fetchWeatherDataForH3Cells(inputFile, outputFile string) {
+	// Read the h3cells.json file
+	data, err := os.ReadFile(inputFile)
+	if err != nil {
+		log.Fatalf("Failed to read input JSON file: %v", err)
 	}
 
-	features := make([]GeoJSONFeature, 0, len(h3cells))
+	var h3cells map[string][]string
+	if err := json.Unmarshal(data, &h3cells); err != nil {
+		log.Fatalf("Failed to parse input JSON file: %v", err)
+	}
 
-	for i, h3cell := range h3cells {
-		log.Printf("Fetching weather data for cell %d/%d: %s", i+1, len(h3cells), h3cell)
+	features := make([]GeoJSONFeature, 0, len(h3cells["h3cells"]))
+
+	for i, h3cell := range h3cells["h3cells"] {
+		log.Printf("Fetching weather data for cell %d/%d: %s", i+1, len(h3cells["h3cells"]), h3cell)
 
 		// Get the center of the cell to fetch temperature data
 		cellCenter := h3.ToGeo(h3.FromString(h3cell))
@@ -148,9 +151,9 @@ func fetchWeatherDataForH3Cells(outputFile string) {
 func main() {
 	LoadEnvironmentVariables()
 
-	// Output file
+	inputFile := "http/h3cells.json"
 	outputFile := "http/h3cells_weather_h4.geojson"
 
-	// Fetch weather data for sample H3 cells and generate GeoJSON
-	fetchWeatherDataForH3Cells(outputFile)
+	// Fetch weather data for H3 cells and generate GeoJSON
+	fetchWeatherDataForH3Cells(inputFile, outputFile)
 }
