@@ -12,7 +12,6 @@ import (
   "time"
 
   _ "github.com/lib/pq"
-  h3 "github.com/uber/h3-go/v3"
   "github.com/joho/godotenv"
 )
 
@@ -29,7 +28,6 @@ var (
 )
 
 func generateGeoJSON() {
-  // Function to establish connection
   host := os.Getenv("DB_HOST")
   port := os.Getenv("DB_PORT")
   user := os.Getenv("DB_USER")
@@ -46,7 +44,6 @@ func generateGeoJSON() {
     host, portNum, user, password, dbname, endpointID)
 
   var db *sql.DB
-  // Retry loop for the connection
   for attempts := 0; attempts < 5; attempts++ {
     db, err = sql.Open("postgres", psqlInfo)
     if err == nil {
@@ -65,102 +62,42 @@ func generateGeoJSON() {
 
   fmt.Println("Successfully connected to the database")
 
-  rows, err := db.Query("SELECT h3cell, visits FROM cities_with_users WHERE h3cell IS NOT NULL")
+  rows, err := db.Query("SELECT h3cell FROM cities_with_users WHERE h3cell IS NOT NULL")
   if err != nil {
     log.Fatal(err)
   }
   defer rows.Close()
 
-  type CellData struct {
-    h3cell string
-    visits sql.NullInt32
-  }
-
-  var h3cells []CellData
+  var h3cells []string
   for rows.Next() {
-    var cellData CellData
-    err = rows.Scan(&cellData.h3cell, &cellData.visits)
+    var h3cell string
+    err = rows.Scan(&h3cell)
     if err != nil {
       log.Fatal(err)
     }
-    h3cells = append(h3cells, cellData)
+    h3cells = append(h3cells, h3cell)
   }
 
   if err := rows.Err(); err != nil {
     log.Fatal(err)
   }
 
-  type GeoJSONFeature struct {
-    Type       string                 `json:"type"`
-    Geometry   map[string]interface{} `json:"geometry"`
-    Properties map[string]interface{} `json:"properties"`
+  h3CellsJSON := map[string][]string{
+    "h3cells": h3cells,
   }
 
-  var features []GeoJSONFeature
-
-  mu.Lock()
-  defer mu.Unlock()
-
-  for _, cellData := range h3cells {
-    isNew := false
-    if _, exists := h3CellsMap[cellData.h3cell]; !exists {
-      isNew = true
-      h3CellsMap[cellData.h3cell] = true
-    }
-
-    cellIndex := h3.FromString(cellData.h3cell)
-    boundary := h3.ToGeoBoundary(cellIndex)
-
-    coordinates := make([][]float64, len(boundary))
-    for j, coord := range boundary {
-      coordinates[j] = []float64{coord.Longitude, coord.Latitude}
-    }
-    coordinates = append(coordinates, coordinates[0])
-
-    coordsInterface := make([]interface{}, len(coordinates))
-    for j, c := range coordinates {
-      coordsInterface[j] = c
-    }
-
-    var fillColor string
-    if cellData.visits.Valid && cellData.visits.Int32 > 30 {
-      fillColor = "#800080" // Purple for cells with more than 30 visits
-    } else if isNew {
-      fillColor = "#0000ff" // Blue for new cells
-    } else {
-      fillColor = "#ff7800" // Orange for existing cells
-    }
-
-    features = append(features, GeoJSONFeature{
-      Type: "Feature",
-      Geometry: map[string]interface{}{
-        "type":        "Polygon",
-        "coordinates": []interface{}{coordsInterface},
-      },
-      Properties: map[string]interface{}{
-        "h3cell":    cellData.h3cell,
-        "fillColor": fillColor,
-      },
-    })
-  }
-
-  geoJSON := map[string]interface{}{
-    "type":     "FeatureCollection",
-    "features": features,
-  }
-
-  file, err := os.Create("http/h3cells.geojson")
+  file, err := os.Create("http/h3cells_replit.json")
   if err != nil {
     log.Fatal(err)
   }
   defer file.Close()
 
   encoder := json.NewEncoder(file)
-  if err := encoder.Encode(geoJSON); err != nil {
+  if err := encoder.Encode(h3CellsJSON); err != nil {
     log.Fatal(err)
   }
 
-  fmt.Println("GeoJSON file created: h3cells.geojson")
+  fmt.Println("JSON file created: h3cells.json")
 }
 
 func main() {
