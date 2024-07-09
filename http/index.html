@@ -5,6 +5,10 @@
   <title>H3 Parent Cells Weather Visualization</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
   <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
     #map {
       height: 100vh;
       width: 100%;
@@ -13,17 +17,29 @@
       font-size: 8px;
       color: black;
     }
+    .level-select-container {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
   </style>
 </head>
 <body>
-  <h3>Select Level:</h3>
-  <select id="level-select" onchange="loadGeoJSON()">
-    <option value="5">Level 5</option>
-    <option value="4">Level 4</option>
-    <option value="3">Level 3</option>
-    <option value="2">Level 2</option>
-    <option value="1">Level 1</option>
-  </select>
+  <div class="level-select-container">
+    <h3>Select Level:</h3>
+    <select id="level-select" onchange="loadGeoJSON()">
+      <option value="5">Level 5</option>
+      <option value="4">Level 4</option>
+      <option value="3">Level 3</option>
+      <option value="2">Level 2</option>
+      <option value="1">Level 1</option>
+    </select>
+  </div>
 
   <div id="map"></div>
 
