@@ -18,12 +18,12 @@ func LoadEnvironmentVariables() {
 
 func generateGeoJSON() {
   // Function to generate or verify the existence of geojson data
-  if _, err := os.Stat("http/h3cells.geojson"); os.IsNotExist(err) {
-    log.Fatalf("h3cells.geojson file does not exist: %v", err)
+  if _, err := os.Stat("http/h3cells_weather_h4.geojson"); os.IsNotExist(err) {
+    log.Fatalf("h3cells_weather_h4.geojson file does not exist: %v", err)
   }
 
-  // Placeholder: Verify existence of h3cells.geojson
-  log.Println("Verified existence of h3cells.geojson")
+  // Placeholder: Verify existence of h3cells_weather_h4.geojson
+  log.Println("Verified existence of h3cells_weather_h4.geojson")
 }
 
 func main() {
@@ -36,13 +36,12 @@ func main() {
     }
   }()
 
-  fs := http.FileServer(http.Dir("./http"))
-  http.Handle("/", fs)
-
-  // Serve the 'index_parents.html' on a specific path
-  http.HandleFunc("/parents", func(w http.ResponseWriter, r *http.Request) {
-    http.ServeFile(w, r, "http/index_parents.html")
+  http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+    http.ServeFile(w, r, "http/index.html")
   })
+
+  fs := http.FileServer(http.Dir("http"))
+  http.Handle("/static/", http.StripPrefix("/static", fs))
 
   log.Println("Serving on port 8080")
   if err := http.ListenAndServe(":8080", nil); err != nil {
