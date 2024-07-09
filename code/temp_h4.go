@@ -151,7 +151,7 @@ func fetchWeatherDataForH3Cells(inputFile, outputFile string) {
 func main() {
 	LoadEnvironmentVariables()
 
-	inputFile := "http/h3cells.json"
+	inputFile := "http/h3cells_cleaned.json"
 	outputFile := "http/h3cells_weather_h4.geojson"
 
 	// Fetch weather data for H3 cells and generate GeoJSON
