@@ -1,51 +1,45 @@
-package main
-
-import (
-  "log"
-  "net/http"
-  "os"
-  "time"
-
-  "github.com/joho/godotenv"
-)
-
-// LoadEnvironmentVariables loads environment variables from a .env file if it exists
-func LoadEnvironmentVariables() {
-  if err := godotenv.Load(); err != nil {
-    log.Println("No .env file found, using environment variables")
-  }
-}
-
-func generateGeoJSON() {
-  // Function to generate or verify the existence of geojson data
-  if _, err := os.Stat("http/h3cells_weather_h4.geojson"); os.IsNotExist(err) {
-    log.Fatalf("h3cells_weather_h4.geojson file does not exist: %v", err)
-  }
-
-  // Placeholder: Verify existence of h3cells_weather_h4.geojson
-  log.Println("Verified existence of h3cells_weather_h4.geojson")
-}
-
-func main() {
-  LoadEnvironmentVariables()
-
-  go func() {
-    for {
-      generateGeoJSON()
-      time.Sleep(3 * time.Hour) // Use time.Sleep for periodic task, if applicable
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>H3 Cells Weather Visualization</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
     }
-  }()
+  </style>
+</head>
+<body>
+  <div id="map"></div>
 
-  fs := http.FileServer(http.Dir("./http"))
-  http.Handle("/", fs)
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    // Initialize the map
+    var map = L.map('map').setView([20, 0], 2);
 
-  // Serve the 'index.html' on the root path
-  http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-    http.ServeFile(w, r, "http/index.html")
-  })
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
 
-  log.Println("Serving on port 8080")
-  if err := http.ListenAndServe(":8080", nil); err != nil {
-    log.Fatal(err)
-  }
-}
+    // Fetch the GeoJSON data
+    fetch('h3cells_weather_h4.geojson')
+      .then(response => response.json())
+      .then(data => {
+        // Add GeoJSON layer to the map
+        L.geoJSON(data, {
+          onEachFeature: function (feature, layer) {
+            if (feature.properties && feature.properties.temperature) {
+              layer.bindPopup('Temperature: ' + feature.properties.temperature + '°C');
+            }
+          }
+        }).addTo(map);
+      })
+      .catch(error => {
+        console.error('Error fetching the GeoJSON data:', error);
+      });
+  </script>
+</body>
+</html>
