@@ -80,6 +80,9 @@
               L.marker(center, { icon: label }).addTo(map);
             }
           }).addTo(map);
+
+          // Fit the map to the bounds of the geojson layer
+          map.fitBounds(window.geojsonLayer.getBounds());
         })
         .catch(error => {
           console.error('Error fetching the GeoJSON data:', error);
