@@ -9,6 +9,10 @@
       height: 100vh;
       width: 100%;
     }
+    .temp-label {
+      font-size: 8px;
+      color: black;
+    }
   </style>
 </head>
 <body>
@@ -16,24 +20,51 @@
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
-    // Initialize the map
     var map = L.map('map').setView([20, 0], 2);
 
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // Fetch the GeoJSON data
-    fetch('h3cells_weather_h4.geojson')
+    // Function to get color based on temperature
+    function getColor(temperature) {
+      const maxTemp = 50;
+      const minTemp = -10;
+      const tempRange = maxTemp - minTemp;
+      const percentage = (temperature - minTemp) / tempRange;
+      const hue = (1 - percentage) * 240; // From blue to red
+      return `hsl(${hue}, 100%, 50%)`;
+    }
+
+    fetch('h3parents.geojson')
       .then(response => response.json())
       .then(data => {
-        // Add GeoJSON layer to the map
         L.geoJSON(data, {
+          style: function (feature) {
+            var temperature = feature.properties.temperature;
+            var fillColor = getColor(temperature);
+
+            return {
+              color: "none", // Remove the outline
+              fillColor: fillColor,
+              fillOpacity: 0.5
+            };
+          },
           onEachFeature: function (feature, layer) {
-            if (feature.properties && feature.properties.temperature) {
-              layer.bindPopup('Temperature: ' + feature.properties.temperature + '°C');
-            }
+            // Create a divIcon for the temperature label
+            var temperature = feature.properties.temperature;
+            var label = L.divIcon({
+              className: 'temp-label',
+              html: Math.round(temperature) + '°C'
+            });
+
+            // Calculate the center of the hex to position the label
+            var coords = feature.geometry.coordinates[0];
+            var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
+            var polygon = L.polygon(latlngs);
+            var center = polygon.getBounds().getCenter();
+
+            L.marker(center, { icon: label }).addTo(map);
           }
         }).addTo(map);
       })
