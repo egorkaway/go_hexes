@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>H3 Cells Weather Visualization</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <meta charset="utf-8">
+  <title>H3 Parent Cells Weather Visualization</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
   <style>
     #map {
       height: 100vh;
@@ -16,6 +16,15 @@
   </style>
 </head>
 <body>
+  <h3>Select Level:</h3>
+  <select id="level-select" onchange="loadGeoJSON()">
+    <option value="5">Level 5</option>
+    <option value="4">Level 4</option>
+    <option value="3">Level 3</option>
+    <option value="2">Level 2</option>
+    <option value="1">Level 1</option>
+  </select>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -26,7 +35,6 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // Function to get color based on temperature
     function getColor(temperature) {
       const maxTemp = 50;
       const minTemp = -10;
@@ -36,41 +44,50 @@
       return `hsl(${hue}, 100%, 50%)`;
     }
 
-    fetch('h3parents.geojson')
-      .then(response => response.json())
-      .then(data => {
-        L.geoJSON(data, {
-          style: function (feature) {
-            var temperature = feature.properties.temperature;
-            var fillColor = getColor(temperature);
+    function loadGeoJSON() {
+      var level = document.getElementById("level-select").value;
+      var geojsonFile = `h3parents_level${level}_weather.geojson`;
 
-            return {
-              color: "none", // Remove the outline
-              fillColor: fillColor,
-              fillOpacity: 0.5
-            };
-          },
-          onEachFeature: function (feature, layer) {
-            // Create a divIcon for the temperature label
-            var temperature = feature.properties.temperature;
-            var label = L.divIcon({
-              className: 'temp-label',
-              html: Math.round(temperature) + '°C'
-            });
-
-            // Calculate the center of the hex to position the label
-            var coords = feature.geometry.coordinates[0];
-            var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
-            var polygon = L.polygon(latlngs);
-            var center = polygon.getBounds().getCenter();
-
-            L.marker(center, { icon: label }).addTo(map);
+      fetch(geojsonFile)
+        .then(response => response.json())
+        .then(data => {
+          if (window.geojsonLayer) {
+            map.removeLayer(window.geojsonLayer);
           }
-        }).addTo(map);
-      })
-      .catch(error => {
-        console.error('Error fetching the GeoJSON data:', error);
-      });
+          window.geojsonLayer = L.geoJSON(data, {
+            style: function (feature) {
+              var temperature = feature.properties.temperature;
+              var fillColor = getColor(temperature);
+
+              return {
+                color: "none", // Remove the outline
+                fillColor: fillColor,
+                fillOpacity: 0.5
+              };
+            },
+            onEachFeature: function (feature, layer) {
+              var temperature = feature.properties.temperature;
+              var label = L.divIcon({
+                className: 'temp-label',
+                html: Math.round(temperature) + '°C'
+              });
+
+              var coords = feature.geometry.coordinates[0];
+              var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
+              var polygon = L.polygon(latlngs);
+              var center = polygon.getBounds().getCenter();
+
+              L.marker(center, { icon: label }).addTo(map);
+            }
+          }).addTo(map);
+        })
+        .catch(error => {
+          console.error('Error fetching the GeoJSON data:', error);
+        });
+    }
+
+    // Load initial level
+    loadGeoJSON();
   </script>
 </body>
 </html>
