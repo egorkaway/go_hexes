@@ -67,7 +67,12 @@
       var geojsonFile = `h3parents_level${level}_weather.geojson`;
 
       fetch(geojsonFile)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(data => {
           if (window.geojsonLayer) {
             map.removeLayer(window.geojsonLayer);
