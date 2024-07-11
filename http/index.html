@@ -67,7 +67,7 @@
 
     function loadGeoJSON() {
       var level = document.getElementById("level-select").value;
-      var geojsonFile = `http/h3parents_level${level}_weather.geojson`;
+      var geojsonFile = `https://egorkaway.github.io/go_hexes/http/h3parents_level${level}_weather.geojson`;
 
       console.log(`Fetching GeoJSON data from: ${geojsonFile}`);
 
@@ -89,6 +89,7 @@
             style: function (feature) {
               var temperature = feature.properties.temperature;
               var fillColor = getColor(temperature);
+
               return {
                 color: "none",
                 fillColor: fillColor,
@@ -118,6 +119,7 @@
         });
     }
 
+    // Initially load level 1
     loadGeoJSON();
   </script>
 </body>
