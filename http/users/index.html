@@ -29,6 +29,7 @@
   <div class="level-select-container">
     <h3>Select Level:</h3>
     <select id="level-select" onchange="loadGeoJSON()">
+      <option value="6">Level 6</option>
       <option value="5">Level 5</option>
       <option value="4">Level 4</option>
       <option value="3">Level 3</option>
@@ -105,7 +106,8 @@
             2: '16px',
             3: '12px',
             4: '10px',
-            5: '8px'
+            5: '8px',
+            6: '6px'
           };
 
           geojsonLayer = L.geoJSON(data, {

@@ -169,8 +169,17 @@ func main() {
   }
 
   outputDir := "./http/users"
+
+  // Generate GeoJSON for resolutions 5 to 1
   for resolution := 5; resolution >= 1; resolution-- {
     parentH3Cells := aggregateH3CellsToParents(h3Cells, resolution)
     fetchWeatherDataForH3Cells(parentH3Cells, resolution, outputDir)
   }
+
+  // Generate GeoJSON for resolution 6 (the original data)
+  h3CellsMap := make(map[string][]int)
+  for _, cell := range h3Cells {
+    h3CellsMap[cell.Index] = append(h3CellsMap[cell.Index], cell.Value)
+  }
+  fetchWeatherDataForH3Cells(h3CellsMap, 6, outputDir)
 }
