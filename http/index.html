@@ -100,7 +100,6 @@
 
       fetch(geojsonFile)
         .then(response => {
-          console.log(response);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -113,11 +112,11 @@
           markersLayer.clearLayers();
 
           const fontSizes = {
-            1: '24px',
-            2: '22px',
-            3: '18px',
-            4: '16px',
-            5: '14px',
+            1: '22px',
+            2: '20px',
+            3: '16px',
+            4: '14px',
+            5: '12px',
             6: '10px'
           };
 
