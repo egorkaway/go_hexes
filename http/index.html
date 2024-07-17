@@ -29,6 +29,7 @@
   <div class="level-select-container">
     <h3>Select Level:</h3>
     <select id="level-select" onchange="loadGeoJSON()">
+      <option value="6">Level 6</option>
       <option value="5">Level 5</option>
       <option value="4">Level 4</option>
       <option value="3">Level 3</option>
@@ -58,6 +59,18 @@
       "Streets": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19
+      }),
+      "OSM Topo": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data: &copy; <a href="https://opentopomap.org/">OpenTopoMap</a> contributors',
+        maxZoom: 17
+      }),
+      "OSM Humanitarian": L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }),
+      "CyclOSM": L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 20
       })
     };
 
@@ -81,7 +94,7 @@
 
     function loadGeoJSON() {
       var level = document.getElementById("level-select").value;
-      var geojsonFile = `https://egorkaway.github.io/go_hexes/http/h3parents_level${level}_weather.geojson`;
+      var geojsonFile = `./h3parent_level${level}_weather.geojson`;
 
       console.log(`Fetching GeoJSON data from: ${geojsonFile}`);
 
@@ -99,13 +112,13 @@
           }
           markersLayer.clearLayers();
 
-          // Define font sizes for different levels
           const fontSizes = {
-            1: '20px',
-            2: '16px',
-            3: '12px',
-            4: '10px',
-            5: '8px'
+            1: '24px',
+            2: '22px',
+            3: '18px',
+            4: '16px',
+            5: '14px',
+            6: '10px'
           };
 
           geojsonLayer = L.geoJSON(data, {
@@ -130,7 +143,7 @@
               });
 
               var coords = feature.geometry.coordinates[0];
-              var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
+              var latlngs = coords.map(function (c) { return [c[1], c[0]]; });
               var polygon = L.polygon(latlngs);
               var center = polygon.getBounds().getCenter();
 
