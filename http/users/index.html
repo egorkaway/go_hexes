@@ -101,14 +101,23 @@
           markersLayer.clearLayers();
 
           // Define font sizes for different levels
-          const fontSizes = {
-            1: '22px',
-            2: '20px',
-            3: '16px',
-            4: '14px',
-            5: '12px',
-            6: '10px'
-          };
+          const fontSizes = (function() {
+            var width = window.innerWidth;
+            var baseFontSizes = {
+              1: 22,
+              2: 20,
+              3: 16,
+              4: 12,
+              5: 10,
+              6: 8
+            };
+            var scaleFactor = width / 1920;
+            var scaledFontSizes = {};
+            for (var level in baseFontSizes) {
+              scaledFontSizes[level] = `${Math.round(baseFontSizes[level] * scaleFactor)}px`;
+            }
+            return scaledFontSizes;
+          })();
 
           geojsonLayer = L.geoJSON(data, {
             style: function (feature) {
