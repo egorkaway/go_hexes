@@ -29,7 +29,6 @@
   <div class="level-select-container">
     <h3>Select Level:</h3>
     <select id="level-select" onchange="loadGeoJSON()">
-      <option value="6">Level 6</option>
       <option value="5">Level 5</option>
       <option value="4">Level 4</option>
       <option value="3">Level 3</option>
@@ -94,7 +93,7 @@
 
     function loadGeoJSON() {
       var level = document.getElementById("level-select").value;
-      var geojsonFile = `./h3parent_level${level}_weather.geojson`;
+      var geojsonFile = `./h3parents_level${level}_weather.geojson`;
 
       console.log(`Fetching GeoJSON data from: ${geojsonFile}`);
 
@@ -106,6 +105,7 @@
           return response.json();
         })
         .then(data => {
+          console.log("GeoJSON data loaded successfully:", data);
           if (geojsonLayer) {
             map.removeLayer(geojsonLayer);
           }
@@ -116,8 +116,7 @@
             2: '20px',
             3: '16px',
             4: '14px',
-            5: '12px',
-            6: '10px'
+            5: '12px'
           };
 
           geojsonLayer = L.geoJSON(data, {
@@ -142,14 +141,16 @@
               });
 
               var coords = feature.geometry.coordinates[0];
-              var latlngs = coords.map(function (c) { return [c[1], c[0]]; });
+              var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
               var polygon = L.polygon(latlngs);
               var center = polygon.getBounds().getCenter();
 
+              console.log("Adding marker at:", center);
               L.marker(center, { icon: label }).addTo(markersLayer);
             }
           }).addTo(map);
 
+          console.log("GeoJSON layer added to the map,", geojsonLayer);
           map.fitBounds(geojsonLayer.getBounds());
         })
         .catch(error => {
