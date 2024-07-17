@@ -1,17 +1,17 @@
 package main
 
 import (
-  "log"
   "net/http"
+  "log"
 )
 
 func main() {
-  fs := http.FileServer(http.Dir("./http"))
+  fs := http.FileServer(http.Dir("http"))
   http.Handle("/", fs)
 
   log.Println("Listening on :8080...")
   err := http.ListenAndServe(":8080", nil)
   if err != nil {
-    log.Fatalf("ListenAndServe: %v", err)
+    log.Fatal(err)
   }
 }
