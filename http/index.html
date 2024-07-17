@@ -31,9 +31,9 @@
     <select id="level-select" onchange="loadGeoJSON()">
       <option value="5">Level 5</option>
       <option value="4">Level 4</option>
-      <option value="3">Level 3</option>
+      <option value="3" selected>Level 3</option>
       <option value="2">Level 2</option>
-      <option value="1" selected>Level 1</option>
+      <option value="1">Level 1</option>
     </select>
   </div>
 
@@ -74,7 +74,7 @@
     };
 
     // Add default basemap
-    baseMaps["Light"].addTo(map);
+    baseMaps["OSM Humanitarian"].addTo(map); // Set OSM Humanitarian as the default basemap
 
     // Add layer control and position it in the bottom left
     L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
@@ -125,9 +125,10 @@
               var fillColor = getColor(temperature);
 
               return {
-                color: "none",
-                fillColor: fillColor,
-                fillOpacity: 0.5
+                color: fillColor, // Outline color with 100% opacity
+                fillColor: fillColor, // Fill color
+                fillOpacity: 0.5,
+                weight: 2 // Outline thickness
               };
             },
             onEachFeature: function (feature, layer) {
@@ -158,7 +159,7 @@
         });
     }
 
-    // Initially load level 1
+    // Initially load level 3
     loadGeoJSON();
   </script>
 </body>
