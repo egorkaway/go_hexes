@@ -29,8 +29,8 @@
   <div class="level-select-container">
     <h3>Select Level:</h3>
     <select id="level-select" onchange="loadGeoJSON()">
-      <option value="3" selected>Level 3</option>
-      <option value="2">Level 2</option>
+      <option value="3">Level 3</option>
+      <option value="2" selected>Level 2</option>
       <option value="1">Level 1</option>
     </select>
   </div>
@@ -38,11 +38,43 @@
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/h3-js@3.7.0"></script>
   <script>
-    var map = L.map('map').setView([20, 0], 2);
+    // Utility function to get URL parameters
+    function getUrlParameter(name) {
+      name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+      const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+      const results = regex.exec(location.search);
+      return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    }
+
+    const h3index = getUrlParameter('i');
+    console.log(`H3 Index from URL: ${h3index}`);
+    const fitBounds = h3index ? false : true;
+
+    let lat = 54.5260; // default latitude to center on Europe
+    let lng = 15.2551; // default longitude to center on Europe
+    let zoom = 4; // default zoom level to fit Europe
+
+    if (h3index) {
+      try {
+        const [h3lat, h3lng] = h3.h3ToGeo(h3index);
+        console.log(`Calculated coordinates from H3 index: lat=${h3lat}, lng=${h3lng}`);
+        lat = h3lat;
+        lng = h3lng;
+        const resolution = h3.h3GetResolution(h3index);
+        zoom = Math.min(2 + resolution, 17); // Cap the zoom level at 17
+        console.log(`Resolution: ${resolution}, Zoom level: ${zoom}`);
+      } catch (e) {
+        console.error(`Error converting H3 index to coordinates: ${h3index}`, e);
+      }
+    }
+
+    console.log(`Initializing map with center: lat=${lat}, lng=${lng}, zoom=${zoom}`);
+    const map = L.map('map').setView([lat, lng], zoom);
 
     // Define basemaps
-    var baseMaps = {
+    const baseMaps = {
       "Light": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
@@ -68,13 +100,13 @@
     };
 
     // Add default basemap
-    baseMaps["OSM Humanitarian"].addTo(map); // Set OSM Humanitarian as the default basemap
+    baseMaps["Light"].addTo(map); // Set Light as the default basemap
 
     // Add layer control and position it in the bottom left
     L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
 
-    var geojsonLayer = null;
-    var markersLayer = L.layerGroup().addTo(map);
+    let geojsonLayer = null;
+    const markersLayer = L.layerGroup().addTo(map);
 
     function getColor(temperature) {
       const maxTemp = 50;
@@ -86,8 +118,8 @@
     }
 
     function loadGeoJSON() {
-      var level = document.getElementById("level-select").value;
-      var geojsonFile = `./reports_h3_level_${level}.geojson`;
+      const level = document.getElementById("level-select").value;
+      const geojsonFile = `./reports_h3_level_${level}.geojson`;
 
       console.log(`Fetching GeoJSON data from: ${geojsonFile}`);
 
@@ -113,8 +145,8 @@
 
           geojsonLayer = L.geoJSON(data, {
             style: function (feature) {
-              var temperature = feature.properties.temperature;
-              var fillColor = getColor(temperature);
+              const temperature = feature.properties.temperature;
+              const fillColor = getColor(temperature);
 
               return {
                 color: fillColor, // Outline color with 100% opacity
@@ -124,35 +156,42 @@
               };
             },
             onEachFeature: function (feature, layer) {
-              var temperature = feature.properties.temperature;
-              var level = document.getElementById("level-select").value;
-              var fontSize = fontSizes[level];
+              const temperature = feature.properties.temperature;
+              const level = document.getElementById("level-select").value;
+              const fontSize = fontSizes[level];
 
-              var label = L.divIcon({
+              const label = L.divIcon({
                 className: 'temp-label',
                 html: `<div style="font-size: ${fontSize};">${Math.round(temperature)}°C</div>`
               });
 
-              var coords = feature.geometry.coordinates[0];
-              var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
-              var polygon = L.polygon(latlngs);
-              var center = polygon.getBounds().getCenter();
+              const coords = feature.geometry.coordinates[0];
+              const latlngs = coords.map(function(c) { return [c[1], c[0]]; });
+              const polygon = L.polygon(latlngs);
+              const center = polygon.getBounds().getCenter();
 
-              console.log("Adding marker at:", center);
               L.marker(center, { icon: label }).addTo(markersLayer);
             }
           }).addTo(map);
 
           console.log("GeoJSON layer added to the map,", geojsonLayer);
-          map.fitBounds(geojsonLayer.getBounds());
+
+          // Only fit bounds if no H3 index is provided (ignore if `fitBounds` is false)
+          if (fitBounds) {
+            map.fitBounds([
+              [71.2088, -25.3618], // top-left corner for the bounding box (Norway region)
+              [34.3071, 39.6568]  // bottom-right corner for the bounding box (Cyprus region)
+            ]);
+          }
         })
         .catch(error => {
           console.error('Error fetching the GeoJSON data:', error);
         });
     }
 
-    // Initially load level 3
+    // Initially load level 2
     loadGeoJSON();
+
   </script>
 </body>
 </html>
