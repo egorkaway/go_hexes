@@ -10,15 +10,14 @@ import (
   "os"
   "path/filepath"
 
+  "github.com/joho/godotenv"
   _ "github.com/lib/pq"
   h3 "github.com/uber/h3-go/v3"
 )
 
 const (
-  postgresURL          = "postgres://default:d1zWD7hyUFEx@ep-broken-tree-05982655-pooler.eu-central-1.aws.neon.tech:5432/verceldb?sslmode=require&options=endpoint%3Dep-broken-tree-05982655"
-  outputJSONFile       = "reports_h3_l3.json"
-  openWeatherMapAPIKey = "e7e06f3f2654e34e138f3d09ea001917" // Replace with your actual API key
-  reportsDir           = "http/reports"
+  outputJSONFile = "reports_h3_l3.json"
+  reportsDir     = "http/reports"
 )
 
 type H3Data struct {
@@ -26,7 +25,28 @@ type H3Data struct {
   Visits  int    `json:"visits"`
 }
 
+func loadEnv() {
+  err := godotenv.Load()
+  if err != nil {
+    log.Fatal("Error loading .env file")
+  }
+}
+
+func buildPostgresURL() string {
+  user := os.Getenv("POSTGRES_USER")
+  password := os.Getenv("POSTGRES_PASSWORD")
+  host := os.Getenv("POSTGRES_HOST")
+  port := os.Getenv("DB_PORT")
+  dbname := os.Getenv("POSTGRES_DATABASE")
+
+  return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=require", user, password, host, port, dbname)
+}
+
 func connectDB() (*sql.DB, error) {
+  postgresURL := buildPostgresURL()
+  if postgresURL == "" {
+    log.Fatal("Postgres URL could not be built from environment variables")
+  }
   return sql.Open("postgres", postgresURL)
 }
 
@@ -134,6 +154,11 @@ func generateGeoJSON(h3Data []H3Data) (map[string]interface{}, error) {
 }
 
 func getWeatherData(lat, lon float64) (map[string]interface{}, error) {
+  openWeatherMapAPIKey := os.Getenv("OPENWEATHERMAP_API_KEY")
+  if openWeatherMapAPIKey == "" {
+    log.Fatal("OPENWEATHERMAP_API_KEY not set in environment")
+  }
+
   url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=%s&units=metric", lat, lon, openWeatherMapAPIKey)
   response, err := http.Get(url)
   if err != nil {
@@ -180,6 +205,8 @@ func arraysToInterfaces(arrays [][]float64) []interface{} {
 }
 
 func main() {
+  loadEnv()
+
   // Create the reports directory if it doesn't exist
   if err := os.MkdirAll(reportsDir, os.ModePerm); err != nil {
     log.Fatal("Failed to create reports directory:", err)
