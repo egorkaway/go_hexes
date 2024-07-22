@@ -52,7 +52,7 @@
     console.log(`H3 Index from URL: ${h3index}`);
     const fitBounds = h3index ? false : true;
 
-    let lat = 54.5260; // default latitude to center on Europe
+    let lat = 14.5260; // default latitude to center on Europe
     let lng = 15.2551; // default longitude to center on Europe
     let zoom = 4; // default zoom level to fit Europe
 
@@ -179,8 +179,8 @@
           // Only fit bounds if no H3 index is provided (ignore if `fitBounds` is false)
           if (fitBounds) {
             map.fitBounds([
-              [71.2088, -25.3618], // top-left corner for the bounding box (Norway region)
-              [34.3071, 39.6568]  // bottom-right corner for the bounding box (Cyprus region)
+              [61.2088, -25.3618], // top-left corner for the bounding box (Norway region)
+              [24.3071, 39.6568]  // bottom-right corner for the bounding box (Cyprus region)
             ]);
           }
         })

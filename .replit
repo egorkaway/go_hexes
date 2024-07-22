@@ -10,9 +10,9 @@ channel = "stable-23_11"
 requiredFiles = [".replit"]
 
 [deployment]
-run = ["go", "run", "."]
 ignorePorts = false
-deploymentTarget = "cloudrun"
+deploymentTarget = "static"
+publicDir = "http"
 
 [[ports]]
 localPort = 8080
