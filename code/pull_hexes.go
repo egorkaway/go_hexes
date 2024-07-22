@@ -40,9 +40,19 @@ func connectDB() (*sql.DB, error) {
     return sql.Open("postgres", postgresURL)
 }
 
+func countUniqueH3Indexes(db *sql.DB) (int, error) {
+    var count int
+    query := "SELECT COUNT(DISTINCT h3_index) FROM h3_level_3"
+    err := db.QueryRow(query).Scan(&count)
+    if err != nil {
+        return 0, err
+    }
+    return count, nil
+}
+
 func fetchH3Level3Data(db *sql.DB) ([]H3Data, error) {
     rows, err := db.Query("SELECT h3_index, visits FROM h3_level_3")
-    if err != nil {
+    if (err != nil) {
         return nil, err
     }
     defer rows.Close()
@@ -208,8 +218,23 @@ func main() {
     }
     defer db.Close()
 
-    h3Data, err := fetchH3Level3Data(db)
+    count, err := countUniqueH3Indexes(db)
     if err != nil {
+        log.Fatal("Failed to count unique h3 indexes:", err)
+    }
+    fmt.Printf("There are %d unique H3 indexes in the h3_level_3 table.\n", count)
+
+    var proceed string
+    fmt.Print("Do you want to proceed with fetching the weather data? (yes/no): ")
+    fmt.Scanln(&proceed)
+
+    if proceed != "yes" {
+        log.Println("Aborted by user. Exiting...")
+        return
+    }
+
+    h3Data, err := fetchH3Level3Data(db)
+    if (err != nil) {
         log.Fatal("Failed to fetch data:", err)
     }
 
