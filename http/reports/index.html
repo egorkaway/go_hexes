@@ -104,11 +104,11 @@
     const markersLayer = L.layerGroup().addTo(map);
 
     function getColor(temperature) {
-      const maxTemp = 50;
-      const minTemp = -10;
+      const maxTemp = 37;
+      const minTemp = -37;
       const tempRange = maxTemp - minTemp;
       const percentage = (temperature - minTemp) / tempRange;
-      const hue = (1 - percentage) * 240; // From blue to red
+      const hue = (1 - percentage) * 360; // From blue to red
       return `hsl(${hue}, 100%, 50%)`;
     }
 
