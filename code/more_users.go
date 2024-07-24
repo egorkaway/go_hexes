@@ -28,13 +28,18 @@ type GeoJSONFeature struct {
 }
 
 type GeoJSONGeometry struct {
-  Type        string          `json:"type"`
-  Coordinates [][][]float64   `json:"coordinates"`
+  Type        string        `json:"type"`
+  Coordinates [][][]float64 `json:"coordinates"`
 }
 
-type H3Cell struct {
+type H3CellInt struct {
   Index string `json:"index"`
   Value int    `json:"value"`
+}
+
+type H3CellString struct {
+  Index string `json:"index"`
+  Value string `json:"value"`
 }
 
 func fetchTemperature(lat, lon float64) (float64, error) {
@@ -71,12 +76,10 @@ func generateGeoJSONFeature(h3cell string, temperature float64) (GeoJSONFeature,
   cellIndex := h3.FromString(h3cell)
   cellBoundary := h3.ToGeoBoundary(cellIndex)
 
-  // Create coordinates in the correct format
   coordinates := make([][]float64, len(cellBoundary)+1)
   for i, coord := range cellBoundary {
     coordinates[i] = []float64{coord.Longitude, coord.Latitude}
   }
-  // Close the polygon by repeating the first set of coordinates
   coordinates[len(cellBoundary)] = coordinates[0]
 
   return GeoJSONFeature{
@@ -86,13 +89,13 @@ func generateGeoJSONFeature(h3cell string, temperature float64) (GeoJSONFeature,
       Coordinates: [][][]float64{coordinates},
     },
     Properties: map[string]interface{}{
-      "h3cell":     h3cell,
+      "h3cell":      h3cell,
       "temperature": temperature,
     },
   }, nil
 }
 
-func fetchWeatherDataForH3Cells(h3Cells map[string][]int, resolution int, outputDir string) {
+func fetchWeatherDataForH3Cells(h3Cells map[string][]interface{}, resolution int, outputDir string) {
   features := make([]GeoJSONFeature, 0, len(h3Cells))
 
   index := 0
@@ -100,17 +103,14 @@ func fetchWeatherDataForH3Cells(h3Cells map[string][]int, resolution int, output
     index++
     log.Printf("Fetching weather data for cell %d/%d: %s", index, len(h3Cells), cell)
 
-    // Get the center of the cell to fetch temperature data
     cellCenter := h3.ToGeo(h3.FromString(cell))
 
-    // Fetch temperature data
     temp, err := fetchTemperature(cellCenter.Latitude, cellCenter.Longitude)
     if err != nil {
       log.Printf("Failed to fetch temperature data for cell %s: %v", cell, err)
-      temp = 0 // Default to 0 if we fail to fetch the temperature
+      temp = 0
     }
 
-    // Generate GeoJSON feature for the cell
     feature, err := generateGeoJSONFeature(cell, temp)
     if err != nil {
       log.Printf("Failed to generate GeoJSON feature for cell %s: %v", cell, err)
@@ -132,9 +132,8 @@ func fetchWeatherDataForH3Cells(h3Cells map[string][]int, resolution int, output
     log.Fatal(err)
   }
 
-  // Remove unnecessary line breaks and whitespaces
   output := buf.String()
-  output = output[:len(output)-1] // Remove trailing newline
+  output = output[:len(output)-1]
 
   outputFile := fmt.Sprintf("%s/h3parent_level%d_weather.geojson", outputDir, resolution)
   if err := ioutil.WriteFile(outputFile, []byte(output), 0644); err != nil {
@@ -144,12 +143,27 @@ func fetchWeatherDataForH3Cells(h3Cells map[string][]int, resolution int, output
   fmt.Printf("GeoJSON file created: %s\n", outputFile)
 }
 
-func aggregateH3CellsToParents(h3Cells []H3Cell, parentResolution int) map[string][]int {
-  parentMap := make(map[string][]int)
+func aggregateH3CellsToParents(h3Cells []interface{}, parentResolution int) map[string][]interface{} {
+  parentMap := make(map[string][]interface{})
   for _, cell := range h3Cells {
-    parentCell := h3.ToParent(h3.FromString(cell.Index), parentResolution)
+    var index string
+    var value interface{}
+
+    switch c := cell.(type) {
+    case H3CellInt:
+      index = c.Index
+      value = c.Value
+    case H3CellString:
+      index = c.Index
+      value = c.Value
+    default:
+      log.Printf("Unknown cell type: %v", c)
+      continue
+    }
+
+    parentCell := h3.ToParent(h3.FromString(index), parentResolution)
     parentCellID := h3.ToString(parentCell)
-    parentMap[parentCellID] = append(parentMap[parentCellID], cell.Value)
+    parentMap[parentCellID] = append(parentMap[parentCellID], value)
   }
   return parentMap
 }
@@ -157,29 +171,59 @@ func aggregateH3CellsToParents(h3Cells []H3Cell, parentResolution int) map[strin
 func main() {
   LoadEnvironmentVariables()
 
-  // Read JSON file with H3 cells
-  data, err := ioutil.ReadFile("./http/users/2.json")
-  if err != nil {
-    log.Fatalf("Failed to read input JSON file: %v", err)
-  }
+  var h3Cells []interface{}
+  userFiles := []string{"./http/users/1.json", "./http/users/4.json"}
 
-  var h3Cells []H3Cell
-  if err := json.Unmarshal(data, &h3Cells); err != nil {
-    log.Fatalf("Failed to parse input JSON file: %v", err)
+  for _, file := range userFiles {
+    data, err := ioutil.ReadFile(file)
+    if err != nil {
+      log.Fatalf("Failed to read input JSON file %s: %v", file, err)
+    }
+
+    var h3CellsInt []H3CellInt
+    if err := json.Unmarshal(data, &h3CellsInt); err == nil {
+      for _, cell := range h3CellsInt {
+        h3Cells = append(h3Cells, cell)
+      }
+      continue
+    }
+
+    var h3CellsString []H3CellString
+    if err := json.Unmarshal(data, &h3CellsString); err == nil {
+      for _, cell := range h3CellsString {
+        h3Cells = append(h3Cells, cell)
+      }
+      continue
+    }
+
+    log.Fatalf("Failed to parse input JSON file %s", file)
   }
 
   outputDir := "./http/users"
 
-  // Generate GeoJSON for resolutions 5 to 1
   for resolution := 5; resolution >= 1; resolution-- {
     parentH3Cells := aggregateH3CellsToParents(h3Cells, resolution)
     fetchWeatherDataForH3Cells(parentH3Cells, resolution, outputDir)
   }
 
-  // Generate GeoJSON for resolution 6 (the original data)
-  h3CellsMap := make(map[string][]int)
+  h3CellsMap := make(map[string][]interface{})
   for _, cell := range h3Cells {
-    h3CellsMap[cell.Index] = append(h3CellsMap[cell.Index], cell.Value)
+    var index string
+    var value interface{}
+
+    switch c := cell.(type) {
+    case H3CellInt:
+      index = c.Index
+      value = c.Value
+    case H3CellString:
+      index = c.Index
+      value = c.Value
+    default:
+      log.Printf("Unknown cell type: %v", c)
+      continue
+    }
+
+    h3CellsMap[index] = append(h3CellsMap[index], value)
   }
   fetchWeatherDataForH3Cells(h3CellsMap, 6, outputDir)
 }
