@@ -172,7 +172,7 @@ func main() {
   LoadEnvironmentVariables()
 
   var h3Cells []interface{}
-  userFiles := []string{"./http/users/1.json", "./http/users/4.json"}
+  userFiles := []string{"./http/users/4.json"}
 
   for _, file := range userFiles {
     data, err := ioutil.ReadFile(file)
