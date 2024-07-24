@@ -158,7 +158,7 @@ func main() {
   LoadEnvironmentVariables()
 
   // Read JSON file with H3 cells
-  data, err := ioutil.ReadFile("./http/users/1.json")
+  data, err := ioutil.ReadFile("./http/users/2.json")
   if err != nil {
     log.Fatalf("Failed to read input JSON file: %v", err)
   }
