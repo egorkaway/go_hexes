@@ -1,11 +1,13 @@
 package main
 
 import (
+    "bytes"
     "database/sql"
     "encoding/json"
     "fmt"
     "io/ioutil"
     "log"
+    "net/http"
     "os"
     "path/filepath"
 
@@ -17,9 +19,22 @@ const (
     exportDir = "export"
 )
 
+var (
+    bucketName = "" // Bucket name will be fetched dynamically
+    token      = "" // New token for authentication
+)
+
 type H3Data struct {
     H3Index string `json:"h3_index"`
     Visits  int    `json:"visits"`
+}
+
+type BucketResponse struct {
+    BucketID string `json:"bucketId"` // Adjust the field name to match JSON key
+}
+
+type TokenResponse struct {
+    AccessToken string `json:"access_token"`
 }
 
 func loadEnv() {
@@ -27,6 +42,57 @@ func loadEnv() {
     if err != nil {
         log.Fatal("Error loading .env file")
     }
+}
+
+func fetchDefaultBucket() (string, error) {
+    resp, err := http.Get("http://127.0.0.1:1106/object-storage/default-bucket")
+    if err != nil {
+        return "", err
+    }
+    defer resp.Body.Close()
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return "", err
+    }
+
+    fmt.Printf("Bucket response: %s\n", string(body)) // Debugging: Print the raw response
+
+    var result BucketResponse
+    err = json.Unmarshal(body, &result)
+    if err != nil {
+        return "", err
+    }
+
+    // Catch unexpected empty bucket ID
+    if result.BucketID == "" {
+        return "", fmt.Errorf("fetched bucket ID is empty")
+    }
+
+    return result.BucketID, nil
+}
+
+func fetchToken() (string, error) {
+    resp, err := http.Post("http://127.0.0.1:1106/token", "application/json", nil)
+    if err != nil {
+        return "", err
+    }
+    defer resp.Body.Close()
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return "", err
+    }
+
+    fmt.Printf("Token response: %s\n", string(body)) // Debugging: Print the raw response
+
+    var result TokenResponse
+    err = json.Unmarshal(body, &result)
+    if err != nil {
+        return "", err
+    }
+
+    return result.AccessToken, nil
 }
 
 func connectDB() (*sql.DB, error) {
@@ -65,10 +131,61 @@ func saveToJSON(data []H3Data, filename string) error {
     return ioutil.WriteFile(filename, file, 0644)
 }
 
+func uploadToObjectStorage(filename, bucketName, token string) error {
+    if bucketName == "" {
+        return fmt.Errorf("bucket name is empty")
+    }
+
+    fileData, err := ioutil.ReadFile(filename)
+    if err != nil {
+        return err
+    }
+
+    url := fmt.Sprintf("https://storage.googleapis.com/upload/storage/v1/b/%s/o?uploadType=media&name=%s", bucketName, filepath.Base(filename))
+    fmt.Printf("Uploading to URL: %s\n", url) // Debugging line to confirm URL
+
+    req, err := http.NewRequest("POST", url, bytes.NewReader(fileData))
+    if err != nil {
+        return err
+    }
+    req.Header.Set("Authorization", "Bearer "+token)
+    req.Header.Set("Content-Type", "application/octet-stream")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        bodyBytes, _ := ioutil.ReadAll(resp.Body)
+        return fmt.Errorf("failed to upload file: %s", string(bodyBytes))
+    }
+
+    return nil
+}
+
 func main() {
     loadEnv()
 
-    // Create the export directory if it doesn't exist
+    var err error
+    bucketName, err = fetchDefaultBucket()
+    if err != nil {
+        log.Fatal("Failed to fetch default bucket ID:", err)
+    }
+    fmt.Printf("Fetched bucket ID: %s\n", bucketName)
+
+    if bucketName == "" {
+        log.Fatal("Bucket name is empty")
+    }
+
+    token, err = fetchToken()
+    if err != nil {
+        log.Fatal("Failed to fetch token:", err)
+    }
+    fmt.Printf("Fetched token: %s\n", token)
+
     if err := os.MkdirAll(exportDir, os.ModePerm); err != nil {
         log.Fatal("Failed to create export directory:", err)
     }
@@ -86,6 +203,8 @@ func main() {
         {3, "h3_level_3"},
         {4, "h3_level_4"},
         {5, "h3_level_5"},
+        {6, "h3_level_6"},
+        {7, "h3_level_7"},
     }
 
     for _, l := range levels {
@@ -99,6 +218,12 @@ func main() {
         if err != nil {
             log.Fatalf("Failed to save JSON file for %s: %v", l.tableName, err)
         }
+
+        err = uploadToObjectStorage(filename, bucketName, token)
+        if err != nil {
+            log.Fatalf("Failed to upload JSON file to Object Storage for %s: %v", l.tableName, err)
+        }
     }
-    log.Print("Successfully processed all levels and saved to /export directory")
+
+    log.Print("Successfully processed all levels and uploaded to Object Storage")
 }
