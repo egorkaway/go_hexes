@@ -10,33 +10,39 @@ import (
     "net/http"
     "os"
     "path/filepath"
+    "time"
 
     "github.com/joho/godotenv"
     _ "github.com/lib/pq"
 )
 
-const (
-    exportDir = "export"
-)
+// Directory to store exported files
+const exportDir = "export"
 
+// Variables to store bucket name and token
 var (
     bucketName = "" // Bucket name will be fetched dynamically
-    token      = "" // New token for authentication
+    token      = "" // Token for authentication
 )
 
+// H3Data struct represents the data structure to be exported
 type H3Data struct {
-    H3Index string `json:"h3_index"`
-    Visits  int    `json:"visits"`
+    H3Index   string     `json:"h3_index"`
+    Visits    int        `json:"visits"`
+    LastVisit *time.Time `json:"last_visit,omitempty"`
 }
 
+// BucketResponse represents the structure of the bucket ID response
 type BucketResponse struct {
-    BucketID string `json:"bucketId"` // Adjust the field name to match JSON key
+    BucketID string `json:"bucketId"`
 }
 
+// TokenResponse represents the structure of the token response
 type TokenResponse struct {
     AccessToken string `json:"access_token"`
 }
 
+// loadEnv loads environment variables from .env file
 func loadEnv() {
     err := godotenv.Load()
     if err != nil {
@@ -44,6 +50,7 @@ func loadEnv() {
     }
 }
 
+// fetchDefaultBucket fetches the default bucket ID from the object storage service
 func fetchDefaultBucket() (string, error) {
     resp, err := http.Get("http://127.0.0.1:1106/object-storage/default-bucket")
     if err != nil {
@@ -56,15 +63,12 @@ func fetchDefaultBucket() (string, error) {
         return "", err
     }
 
-    fmt.Printf("Bucket response: %s\n", string(body)) // Debugging: Print the raw response
-
     var result BucketResponse
     err = json.Unmarshal(body, &result)
     if err != nil {
         return "", err
     }
 
-    // Catch unexpected empty bucket ID
     if result.BucketID == "" {
         return "", fmt.Errorf("fetched bucket ID is empty")
     }
@@ -72,6 +76,7 @@ func fetchDefaultBucket() (string, error) {
     return result.BucketID, nil
 }
 
+// fetchToken fetches an authentication token from the token service
 func fetchToken() (string, error) {
     resp, err := http.Post("http://127.0.0.1:1106/token", "application/json", nil)
     if err != nil {
@@ -84,8 +89,6 @@ func fetchToken() (string, error) {
         return "", err
     }
 
-    fmt.Printf("Token response: %s\n", string(body)) // Debugging: Print the raw response
-
     var result TokenResponse
     err = json.Unmarshal(body, &result)
     if err != nil {
@@ -95,6 +98,7 @@ func fetchToken() (string, error) {
     return result.AccessToken, nil
 }
 
+// connectDB establishes a connection to the database using POSTGRES_URL environment variable
 func connectDB() (*sql.DB, error) {
     postgresURL := os.Getenv("POSTGRES_URL")
     if postgresURL == "" {
@@ -103,8 +107,17 @@ func connectDB() (*sql.DB, error) {
     return sql.Open("postgres", postgresURL)
 }
 
-func fetchH3Data(db *sql.DB, tableName string) ([]H3Data, error) {
-    rows, err := db.Query(fmt.Sprintf("SELECT h3_index, visits FROM %s", tableName))
+// fetchH3Data fetches H3 data from the specified table in the database
+func fetchH3Data(db *sql.DB, tableName string, hasLastVisit bool) ([]H3Data, error) {
+    var rows *sql.Rows
+    var err error
+
+    if hasLastVisit {
+        rows, err = db.Query(fmt.Sprintf("SELECT h3_index, visits, last_visit FROM %s", tableName))
+    } else {
+        rows, err = db.Query(fmt.Sprintf("SELECT h3_index, visits FROM %s", tableName))
+    }
+
     if err != nil {
         return nil, err
     }
@@ -114,15 +127,41 @@ func fetchH3Data(db *sql.DB, tableName string) ([]H3Data, error) {
     for rows.Next() {
         var h3Index string
         var visits int
-        err := rows.Scan(&h3Index, &visits)
-        if err != nil {
-            return nil, err
+        var lastVisit sql.NullTime
+
+        if hasLastVisit {
+            err := rows.Scan(&h3Index, &visits, &lastVisit)
+            if err != nil {
+                return nil, err
+            }
+
+            var lastVisitPtr *time.Time
+            if lastVisit.Valid {
+                lastVisitPtr = &lastVisit.Time
+            }
+
+            data = append(data, H3Data{
+                H3Index:   h3Index,
+                Visits:    visits,
+                LastVisit: lastVisitPtr,
+            })
+        } else {
+            err := rows.Scan(&h3Index, &visits)
+            if err != nil {
+                return nil, err
+            }
+
+            data = append(data, H3Data{
+                H3Index:   h3Index,
+                Visits:    visits,
+                LastVisit: nil,
+            })
         }
-        data = append(data, H3Data{H3Index: h3Index, Visits: visits})
     }
     return data, nil
 }
 
+// saveToJSON saves the given H3 data to a JSON file
 func saveToJSON(data []H3Data, filename string) error {
     file, err := json.MarshalIndent(data, "", "  ")
     if err != nil {
@@ -131,6 +170,7 @@ func saveToJSON(data []H3Data, filename string) error {
     return ioutil.WriteFile(filename, file, 0644)
 }
 
+// uploadToObjectStorage uploads the given file to the object storage
 func uploadToObjectStorage(filename, bucketName, token string) error {
     if bucketName == "" {
         return fmt.Errorf("bucket name is empty")
@@ -142,7 +182,6 @@ func uploadToObjectStorage(filename, bucketName, token string) error {
     }
 
     url := fmt.Sprintf("https://storage.googleapis.com/upload/storage/v1/b/%s/o?uploadType=media&name=%s", bucketName, filepath.Base(filename))
-    fmt.Printf("Uploading to URL: %s\n", url) // Debugging line to confirm URL
 
     req, err := http.NewRequest("POST", url, bytes.NewReader(fileData))
     if err != nil {
@@ -166,6 +205,7 @@ func uploadToObjectStorage(filename, bucketName, token string) error {
     return nil
 }
 
+// main function is the entry point of the program
 func main() {
     loadEnv()
 
@@ -197,18 +237,19 @@ func main() {
     defer db.Close()
 
     levels := []struct {
-        level    int
-        tableName string
+        level       int
+        tableName   string
+        hasLastVisit bool
     }{
-        {3, "h3_level_3"},
-        {4, "h3_level_4"},
-        {5, "h3_level_5"},
-        {6, "h3_level_6"},
-        {7, "h3_level_7"},
+        {3, "h3_level_3", false},
+        {4, "h3_level_4", true},
+        {5, "h3_level_5", true},
+        {6, "h3_level_6", true},
+        {7, "h3_level_7", true},
     }
 
     for _, l := range levels {
-        h3Data, err := fetchH3Data(db, l.tableName)
+        h3Data, err := fetchH3Data(db, l.tableName, l.hasLastVisit)
         if err != nil {
             log.Fatalf("Failed to fetch data for %s: %v", l.tableName, err)
         }
