@@ -20,3 +20,6 @@ externalPort = 80
 
 [env]
 REPLIT_DISABLE_PACKAGE_LAYER = "1"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-f26a0a51-8f54-44b8-ae87-19ca3f349218"
