@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>H3 Weather Visualization - Level 6</title>
+  <title>H3 Weather Visualization - Level 7</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
   <style>
     body {
@@ -41,7 +41,7 @@
     }
 
     function loadGeoJSON() {
-      var geojsonFile = 'https://storage.googleapis.com/hex-json-processor/output/h3_level_6.geojson';
+      var geojsonFile = '/h3_level_7.geojson'; // Fetch GeoJSON from this URL
 
       console.log(`Fetching GeoJSON data from: ${geojsonFile}`);
 
@@ -74,7 +74,7 @@
 
               var label = L.divIcon({
                 className: 'temp-label',
-                html: `<div style="font-size: ${fontSize};">${temperature.toFixed(1)}</div>` // Display only temperature numbers
+                html: `<div style="font-size: ${fontSize};">${Math.round(temperature)}°C</div>`
               });
 
               var coords = feature.geometry.coordinates[0];
