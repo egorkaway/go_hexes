@@ -1,0 +1,226 @@
+{
+    "200": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Thunderstorm with light rain"
+    },
+    "201": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Thunderstorm with rain"
+    },
+    "202": {
+        "emoji": "\u26c8\ufe0f\ud83d\udca6\u26a1",
+        "condition": "Thunderstorm with heavy rain"
+    },
+    "210": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Light thunderstorm"
+    },
+    "211": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Thunderstorm"
+    },
+    "212": {
+        "emoji": "\u26c8\ufe0f\ud83d\udca6\u26a1",
+        "condition": "Heavy thunderstorm"
+    },
+    "221": {
+        "emoji": "\u26c8\ufe0f\u26a1",
+        "condition": "Ragged thunderstorm"
+    },
+    "230": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Thunderstorm with light drizzle"
+    },
+    "231": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Thunderstorm with drizzle"
+    },
+    "232": {
+        "emoji": "\u26c8\ufe0f\u26a1\u2614",
+        "condition": "Thunderstorm with heavy drizzle"
+    },
+    "300": {
+        "emoji": "\ud83c\udf28",
+        "condition": "Light Drizzle"
+    },
+    "301": {
+        "emoji": "\ud83c\udf28\ud83d\udca6",
+        "condition": "Drizzle"
+    },
+    "302": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Heavy Drizzle"
+    },
+    "310": {
+        "emoji": "\ud83c\udf28",
+        "condition": "Light intensity drizzle rain"
+    },
+    "311": {
+        "emoji": "\ud83c\udf28\ud83d\udca6",
+        "condition": "Drizzle rain"
+    },
+    "312": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83c\udf27\ufe0f\ud83d\udca6",
+        "condition": "Heavy intensity drizzle rain"
+    },
+    "313": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83c\udf28",
+        "condition": "Shower rain and drizzle"
+    },
+    "314": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Heavy shower rain and drizzle"
+    },
+    "321": {
+        "emoji": "\ud83c\udf28\ud83c\udf28\ud83d\udca6",
+        "condition": "Shower drizzle"
+    },
+    "500": {
+        "emoji": "\ud83c\udf27\ufe0f",
+        "condition": "Light Rain"
+    },
+    "501": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\u2614",
+        "condition": "Moderate Rain"
+    },
+    "502": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Heavy Rain"
+    },
+    "503": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Very heavy rain"
+    },
+    "504": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Extreme rain"
+    },
+    "511": {
+        "emoji": "\ud83c\udf27\ufe0f\u2603\ufe0f",
+        "condition": "Freezing rain"
+    },
+    "520": {
+        "emoji": "\ud83c\udf27\ufe0f\u2614",
+        "condition": "Light shower rain"
+    },
+    "521": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Shower rain"
+    },
+    "522": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Heavy shower rain"
+    },
+    "531": {
+        "emoji": "\ud83c\udf27\ufe0f\ud83d\udca6\ud83d\udca6",
+        "condition": "Ragged shower rain"
+    },
+    "600": {
+        "emoji": "\ud83c\udf28\ufe0f",
+        "condition": "Light snow"
+    },
+    "601": {
+        "emoji": "\ud83c\udf28\ufe0f\u2744\ufe0f",
+        "condition": "Snow"
+    },
+    "602": {
+        "emoji": "\ud83c\udf28\ufe0f\u2744\ufe0f\u2744\ufe0f",
+        "condition": "Heavy Snow"
+    },
+    "610": {
+        "emoji": "\ud83c\udf27\ufe0f\u2614",
+        "condition": "Mix snow/rain"
+    },
+    "611": {
+        "emoji": "\ud83c\udf27\ufe0f\u2744\ufe0f",
+        "condition": "Sleet"
+    },
+    "612": {
+        "emoji": "\ud83c\udf27\ufe0f",
+        "condition": "Heavy sleet"
+    },
+    "613": {
+        "emoji": "\ud83c\udf27\ufe0f\u2614",
+        "condition": "Shower sleet"
+    },
+    "615": {
+        "emoji": "\ud83c\udf27\ufe0f\u2744\ufe0f\ud83d\udca6",
+        "condition": "Light rain and snow"
+    },
+    "616": {
+        "emoji": "\ud83c\udf27\ufe0f\u2744\ufe0f\ud83d\udca6",
+        "condition": "Rain and snow"
+    },
+    "620": {
+        "emoji": "\ud83c\udf28\ufe0f\u2744\ufe0f",
+        "condition": "Light shower snow"
+    },
+    "621": {
+        "emoji": "\ud83c\udf28\ufe0f\u2744\ufe0f",
+        "condition": "Snow shower"
+    },
+    "622": {
+        "emoji": "\ud83c\udf28\ufe0f\u2744\ufe0f\u2744\ufe0f",
+        "condition": "Heavy snow shower"
+    },
+    "701": {
+        "emoji": "\ud83c\udf01",
+        "condition": "Mist"
+    },
+    "711": {
+        "emoji": "\ud83c\udf01",
+        "condition": "Smoke"
+    },
+    "721": {
+        "emoji": "\ud83c\udf01",
+        "condition": "Haze"
+    },
+    "731": {
+        "emoji": "\ud83c\udfdc\ufe0f",
+        "condition": "Sand/dust"
+    },
+    "741": {
+        "emoji": "\ud83c\udf01",
+        "condition": "Fog"
+    },
+    "751": {
+        "emoji": "\ud83c\udfdc\ufe0f",
+        "condition": "Sand"
+    },
+    "761": {
+        "emoji": "\ud83c\udfdc\ufe0f",
+        "condition": "Dust"
+    },
+    "762": {
+        "emoji": "\ud83c\udfdc\ufe0f",
+        "condition": "volcanic ash"
+    },
+    "771": {
+        "emoji": "\ud83c\udf2c\ufe0f\ud83d\udca8",
+        "condition": "Squalls"
+    },
+    "781": {
+        "emoji": "\ud83c\udf2a\ufe0f",
+        "condition": "Tornado"
+    },
+    "800": {
+        "emoji": "\u2600\ufe0f",
+        "condition": "Clear sky"
+    },
+    "801": {
+        "emoji": "\ud83c\udf24\ufe0f",
+        "condition": "Few clouds"
+    },
+    "802": {
+        "emoji": "\u26c5",
+        "condition": "Scattered clouds"
+    },
+    "803": {
+        "emoji": "\ud83c\udf24\ufe0f\u2601\ufe0f",
+        "condition": "Broken clouds"
+    },
+    "804": {
+        "emoji": "\u2601\ufe0f\u2601\ufe0f\u2601\ufe0f",
+        "condition": "Overcast clouds"
+    }
+}

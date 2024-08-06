@@ -1,13 +1,10 @@
 package main
 
 import (
-  "bufio"
   "database/sql"
   "fmt"
   "log"
   "os"
-  "strconv"
-  "strings"
   "time"
 
   "github.com/joho/godotenv"
@@ -97,7 +94,7 @@ func fetchDataForLevel(db *sql.DB, table string, minLat, minLon, maxLat, maxLon 
   return data, nil
 }
 
-func aggregateData(data [][4]interface{}, level int, includeLastVisit bool) map[string][2]interface{} {
+func aggregateData(data [][4]interface{}, level int) map[string][2]interface{} {
   aggregated := make(map[string][2]interface{})
   for _, record := range data {
     lat := record[0].(float64)
@@ -105,25 +102,24 @@ func aggregateData(data [][4]interface{}, level int, includeLastVisit bool) map[
     visits := record[2].(int)
     h3Index := h3.ToString(h3.FromGeo(h3.GeoCoord{Latitude: lat, Longitude: lon}, level))
 
-    if includeLastVisit {
-      lastVisit, ok := record[3].(time.Time)
-      if !ok {
-        lastVisit = time.Time{}
-      }
-      if existing, ok := aggregated[h3Index]; ok {
-        aggregated[h3Index] = [2]interface{}{existing[0].(int) + visits, maxTime(existing[1].(time.Time), lastVisit)}
-      } else {
-        aggregated[h3Index] = [2]interface{}{visits, lastVisit}
-      }
+    lastVisit, ok := record[3].(time.Time)
+    if !ok {
+      lastVisit = time.Time{}
+    }
+    if existing, ok := aggregated[h3Index]; ok {
+      aggregated[h3Index] = [2]interface{}{max(existing[0].(int), visits), maxTime(existing[1].(time.Time), lastVisit)}
     } else {
-      if existing, ok := aggregated[h3Index]; ok {
-        aggregated[h3Index] = [2]interface{}{existing[0].(int) + visits, nil}
-      } else {
-        aggregated[h3Index] = [2]interface{}{visits, nil}
-      }
+      aggregated[h3Index] = [2]interface{}{visits, lastVisit}
     }
   }
   return aggregated
+}
+
+func max(a, b int) int {
+  if a > b {
+    return a
+  }
+  return b
 }
 
 func maxTime(t1, t2 time.Time) time.Time {
@@ -133,7 +129,7 @@ func maxTime(t1, t2 time.Time) time.Time {
   return t2
 }
 
-func insertAggregatedData(db *sql.DB, table string, aggregated map[string][2]interface{}, includeLastVisit bool) error {
+func insertAggregatedData(db *sql.DB, table string, aggregated map[string][2]interface{}) error {
   tx, err := db.Begin()
   if err != nil {
     return err
@@ -141,44 +137,31 @@ func insertAggregatedData(db *sql.DB, table string, aggregated map[string][2]int
 
   for h3Index, values := range aggregated {
     visits := values[0].(int)
-    if includeLastVisit {
-      lastVisit, ok := values[1].(time.Time)
-      if !ok {
-        lastVisit = time.Time{}
-      }
-      var currentLastVisit sql.NullTime
-      err := tx.QueryRow(fmt.Sprintf("SELECT last_visit FROM %s WHERE h3_index = $1", table), h3Index).Scan(&currentLastVisit)
-      if err != nil && err != sql.ErrNoRows {
-        tx.Rollback()
-        return err
-      }
+    lastVisit, ok := values[1].(time.Time)
+    if !ok {
+      lastVisit = time.Time{}
+    }
+    var currentLastVisit sql.NullTime
+    err := tx.QueryRow(fmt.Sprintf("SELECT last_visit FROM %s WHERE h3_index = $1", table), h3Index).Scan(&currentLastVisit)
+    if err != nil && err != sql.ErrNoRows {
+      tx.Rollback()
+      return err
+    }
 
-      if !currentLastVisit.Valid || (err == nil && currentLastVisit.Valid && currentLastVisit.Time.Before(lastVisit)) {
-        log.Printf("%s updated from %s to %s", h3Index, currentLastVisit.Time.Format("2006-01-02 15:04"), lastVisit.Format("2006-01-02 15:04"))
-      }
+    if !currentLastVisit.Valid || (err == nil && currentLastVisit.Valid && currentLastVisit.Time.Before(lastVisit)) {
+      log.Printf("%s updated from %s to %s", h3Index, currentLastVisit.Time.Format("2006-01-02 15:04"), lastVisit.Format("2006-01-02 15:04"))
+    }
 
-      _, err = tx.Exec(
-        `INSERT INTO `+table+` (h3_index, visits, last_visit) VALUES ($1, $2, $3)
-          ON CONFLICT (h3_index) DO UPDATE 
-          SET visits = GREATEST(`+table+`.visits, EXCLUDED.visits), 
-          last_visit = CASE WHEN `+table+`.last_visit IS NULL OR `+table+`.last_visit < EXCLUDED.last_visit THEN EXCLUDED.last_visit ELSE `+table+`.last_visit END`,
-        h3Index, visits, lastVisit,
-      )
-      if err != nil {
-        tx.Rollback()
-        return err
-      }
-    } else {
-      _, err = tx.Exec(
-        `INSERT INTO `+table+` (h3_index, visits) VALUES ($1, $2)
-          ON CONFLICT (h3_index) DO UPDATE 
-          SET visits = GREATEST(`+table+`.visits, EXCLUDED.visits)`,
-        h3Index, visits,
-      )
-      if err != nil {
-        tx.Rollback()
-        return err
-      }
+    _, err = tx.Exec(
+      `INSERT INTO `+table+` (h3_index, visits, last_visit) VALUES ($1, $2, $3)
+        ON CONFLICT (h3_index) DO UPDATE 
+        SET visits = GREATEST(`+table+`.visits, EXCLUDED.visits), 
+        last_visit = CASE WHEN `+table+`.last_visit IS NULL OR `+table+`.last_visit < EXCLUDED.last_visit THEN EXCLUDED.last_visit ELSE `+table+`.last_visit END`,
+      h3Index, visits, lastVisit,
+    )
+    if err != nil {
+      tx.Rollback()
+      return err
     }
   }
 
@@ -201,47 +184,46 @@ func main() {
   loadEnv()
 
   db, err := connectDB()
-  if err != nil {
+  if (err != nil ) {
     log.Fatal("Failed to connect to database:", err)
   }
   defer db.Close()
 
+  // Define levels
   levels := []struct {
-    level             int
-    table             string
-    nwLat             float64
-    nwLon             float64
-    seLat             float64
-    seLon             float64
-    includeLastVisit bool
+    level int
+    table string
+    nwLat float64
+    nwLon float64
+    seLat float64
+    seLon float64
   }{
-    {3, "h3_level_3", 0, 0, 0, 0, false},
-    {4, "h3_level_4", NW_CORNER_LEVEL4_LAT, NW_CORNER_LEVEL4_LON, SE_CORNER_LEVEL4_LAT, SE_CORNER_LEVEL4_LON, true},
-    {5, "h3_level_5", NW_CORNER_LEVEL5_LAT, NW_CORNER_LEVEL5_LON, SE_CORNER_LEVEL5_LAT, SE_CORNER_LEVEL5_LON, true},
-    {6, "h3_level_6", NW_CORNER_LEVEL6_7_LAT, NW_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LAT, SE_CORNER_LEVEL6_7_LON, true},
-    {7, "h3_level_7", NW_CORNER_LEVEL6_7_LAT, NW_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LON, true},
+    {3, "h3_level_3", 0, 0, 0, 0},
+    {4, "h3_level_4", NW_CORNER_LEVEL4_LAT, NW_CORNER_LEVEL4_LON, SE_CORNER_LEVEL4_LAT, SE_CORNER_LEVEL4_LON},
+    {5, "h3_level_5", NW_CORNER_LEVEL5_LAT, NW_CORNER_LEVEL5_LON, SE_CORNER_LEVEL5_LAT, SE_CORNER_LEVEL5_LON},
+    {6, "h3_level_6", NW_CORNER_LEVEL6_7_LAT, NW_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LAT, SE_CORNER_LEVEL6_7_LON},
+    {7, "h3_level_7", NW_CORNER_LEVEL6_7_LAT, NW_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LON},
   }
 
-  // Prompt user for starting level
-  reader := bufio.NewReader(os.Stdin)
-  fmt.Print("Enter the starting level (3-7): ")
-  input, _ := reader.ReadString('\n')
-  input = strings.TrimSpace(input)
-  startLevel, err := strconv.Atoi(input)
-  if err != nil || startLevel < 3 || startLevel > 7 {
-    log.Fatalf("Invalid starting level: %v", input)
+  // Prompt for starting level to process
+  var startLevel int
+  for {
+    fmt.Println("Enter the starting level (3-7): ")
+    _, err := fmt.Scanln(&startLevel)
+    if err == nil && startLevel >= 3 && startLevel <= 7 {
+      break
+    }
+    fmt.Println("Invalid input. Please enter a level between 3 and 7.")
   }
 
   for _, level := range levels {
     if level.level < startLevel {
-      continue
+      continue  // Skip levels less than the starting level
     }
 
-    if level.includeLastVisit {
-      err = ensureLastVisitColumn(db, level.table)
-      if err != nil {
-        log.Fatalf("Failed to ensure last_visit column for table %s: %v", level.table, err)
-      }
+    err = ensureLastVisitColumn(db, level.table)
+    if err != nil {
+      log.Fatalf("Failed to ensure last_visit column for table %s: %v", level.table, err)
     }
 
     beforeCount, err := countRows(db, level.table)
@@ -255,9 +237,9 @@ func main() {
       log.Fatalf("Failed to fetch data for level %d: %v", level.level, err)
     }
 
-    aggregatedData := aggregateData(data, level.level, level.includeLastVisit)
+    aggregatedData := aggregateData(data, level.level)
 
-    err = insertAggregatedData(db, level.table, aggregatedData, level.includeLastVisit)
+    err = insertAggregatedData(db, level.table, aggregatedData)
     if err != nil {
       log.Fatalf("Failed to insert aggregated data for level %d: %v", level.level, err)
     }
@@ -269,5 +251,5 @@ func main() {
     log.Printf("Number of rows in table %s after processing: %d", level.table, afterCount)
   }
 
-  log.Println("Successfully aggregated and updated visits for all levels.")
+  log.Println("Successfully aggregated and updated visits for selected levels.")
 }
