@@ -16,9 +16,9 @@ import (
 )
 
 const (
-    europeDir          = "http/europe"
-    inputJSONFile      = "europe_h3_level_2.json"
-    outputGeoJSONFile  = "europe_h3_level_2_emoji.geojson"
+    europeDir          = "http/emoji"
+    inputJSONFile      = "europe_h3_l2.json"
+    outputGeoJSONFile  = "emoji.geojson"
     weatherCodesFile   = "weather_codes.json"
 )
 
@@ -65,43 +65,53 @@ func getEmojiForWeatherCode(code string) string {
     return ""
 }
 
-func fetchWeatherData(lat, lon float64) (float64, string, error) {
+func fetchWeatherData(lat, lon float64) (float64, float64, float64, string, error) {
     openWeatherMapAPIKey := os.Getenv("OPENWEATHERMAP_API_KEY")
     if openWeatherMapAPIKey == "" {
-        return 0, "", fmt.Errorf("OPENWEATHERMAP_API_KEY not set in environment")
+        return 0, 0, 0, "", fmt.Errorf("OPENWEATHERMAP_API_KEY not set in environment")
     }
 
     url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=%s&units=metric", lat, lon, openWeatherMapAPIKey)
     response, err := http.Get(url)
     if err != nil {
-        return 0, "", err
+        return 0, 0, 0, "", err
     }
     defer response.Body.Close()
 
     if response.StatusCode != http.StatusOK {
         bodyBytes, _ := ioutil.ReadAll(response.Body)
-        return 0, "", fmt.Errorf("failed to fetch weather data: %s", string(bodyBytes))
+        return 0, 0, 0, "", fmt.Errorf("failed to fetch weather data: %s", string(bodyBytes))
     }
 
     var weatherData map[string]interface{}
     if err := json.NewDecoder(response.Body).Decode(&weatherData); err != nil {
-        return 0, "", err
+        return 0, 0, 0, "", err
     }
 
     main, ok := weatherData["main"].(map[string]interface{})
     if !ok {
-        return 0, "", fmt.Errorf("invalid response format")
+        return 0, 0, 0, "", fmt.Errorf("invalid response format")
     }
 
     temp, ok := main["temp"].(float64)
     if !ok {
-        return 0, "", fmt.Errorf("invalid temperature data")
+        return 0, 0, 0, "", fmt.Errorf("invalid temperature data")
+    }
+
+    tempMin, ok := main["temp_min"].(float64)
+    if !ok {
+        return 0, 0, 0, "", fmt.Errorf("invalid temp_min data")
+    }
+
+    tempMax, ok := main["temp_max"].(float64)
+    if !ok {
+        return 0, 0, 0, "", fmt.Errorf("invalid temp_max data")
     }
 
     weather := weatherData["weather"].([]interface{})[0].(map[string]interface{})
     weatherCode := fmt.Sprintf("%v", weather["id"])
 
-    return temp, weatherCode, nil
+    return temp, tempMin, tempMax, weatherCode, nil
 }
 
 type GeoJSONFeature struct {
@@ -115,7 +125,7 @@ type GeoJSONGeometry struct {
     Coordinates [][][]float64   `json:"coordinates"`
 }
 
-func generateGeoJSONFeature(h3cell string, temperature float64, weatherCode string) (GeoJSONFeature, error) {
+func generateGeoJSONFeature(h3cell string, temperature, tempMin, tempMax float64, weatherCode string) (GeoJSONFeature, error) {
     cellIndex := h3.FromString(h3cell)
     cellBoundary := h3.ToGeoBoundary(cellIndex)
 
@@ -136,6 +146,8 @@ func generateGeoJSONFeature(h3cell string, temperature float64, weatherCode stri
         Properties: map[string]interface{}{
             "h3cell":      h3cell,
             "temperature": temperature,
+            "temp_min":    tempMin,
+            "temp_max":    tempMax,
             "weather_code": weatherCode,
             "emoji":       emoji,
         },
@@ -150,14 +162,16 @@ func fetchWeatherDataForH3Cells(h3Data []H3Data, outputPath string) error {
 
         cellCenter := h3.ToGeo(h3.FromString(data.H3Index))
 
-        temp, weatherCode, err := fetchWeatherData(cellCenter.Latitude, cellCenter.Longitude)
+        temp, tempMin, tempMax, weatherCode, err := fetchWeatherData(cellCenter.Latitude, cellCenter.Longitude)
         if err != nil {
             log.Printf("Failed to fetch weather data for cell %s: %v", data.H3Index, err)
             temp = 0
+            tempMin = 0
+            tempMax = 0
             weatherCode = "unknown"
         }
 
-        feature, err := generateGeoJSONFeature(data.H3Index, temp, weatherCode)
+        feature, err := generateGeoJSONFeature(data.H3Index, temp, tempMin, tempMax, weatherCode)
         if err != nil {
             return err
         }

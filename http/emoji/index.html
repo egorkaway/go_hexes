@@ -58,9 +58,7 @@
     }
 
     function loadGeoJSON() {
-      var geojsonFile = '/emoji.geojson'; // Path to the GeoJSON file
-
-      console.log(`Fetching GeoJSON data from: ${geojsonFile}`);
+      var geojsonFile = 'emoji.geojson'; // Ensure this path is correct
 
       fetch(geojsonFile)
         .then(response => {
@@ -88,7 +86,13 @@
             onEachFeature: function (feature, layer) {
               var emoji = feature.properties.emoji;
               var temperature = feature.properties.temperature;
+              var temp_min = feature.properties.temp_min;
+              var temp_max = feature.properties.temp_max;
               var fontSize = '14px';
+
+              if (temp_min === temp_max) {
+                temp_max += 1; // Show temp_max as one degree higher if they're the same
+              }
 
               var label = L.divIcon({
                 className: 'emoji-label',
@@ -106,7 +110,8 @@
                 var popupContent = `
                   <div class="popup-content">
                     <div style="font-size:24px;">${emoji}</div>
-                    <div>Temperature: ${temperature}°C</div>
+                    <div style="font-size:26px;">${Math.round(temperature)}°C</div>
+                    <div>↓${Math.round(temp_min)}°C ... ↑${Math.round(temp_max)}°C</div>
                     <button onclick="this.style.display='none'">Ask Locals to Confirm</button>
                   </div>
                 `;
@@ -121,8 +126,6 @@
 
           // Fit the map bounds to the GeoJSON layer
           map.fitBounds(geojsonLayer.getBounds());
-
-          console.log("GeoJSON layer added to the map,", geojsonLayer);
         })
         .catch(error => {
           console.error('Error fetching the GeoJSON data:', error);
@@ -138,7 +141,7 @@
 
       var popup = L.popup()
         .setLatLng(e.latlng)
-        .setContent('<div class="popup-content">No active users here, spread the word!</div>')
+        .setContent('<div class="popup-content">No active users here, spread the word to get user reports for this location!</div>')
         .openOn(map);
     });
   </script>
