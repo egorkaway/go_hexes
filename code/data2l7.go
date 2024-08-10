@@ -3,22 +3,25 @@ package main
 import (
   "database/sql"
   "log"
-  "os"
 
   "github.com/joho/godotenv"
   _ "github.com/lib/pq"
   h3 "github.com/uber/h3-go/v3"
 )
 
+const (
+  // New database connection URL
+  postgresURL = "postgresql://postgres.ylbjmqqjqifpfqcwtrpn:dUspyj-gahzec-madty9@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+)
+
 func loadEnv() {
   err := godotenv.Load()
   if err != nil {
-    log.Fatal("Error loading .env file")
+    log.Println("Error loading .env file, proceeding without it")
   }
 }
 
 func connectDB() (*sql.DB, error) {
-  postgresURL := os.Getenv("POSTGRES_URL")
   if postgresURL == "" {
     log.Fatal("POSTGRES_URL not set in environment variables")
   }
