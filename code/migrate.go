@@ -10,8 +10,8 @@ import (
 
 // Source and destination database connection URLs
 const (
-  sourceDBURL = "postgres://default:d1zWD7hyUFEx@ep-broken-tree-05982655-pooler.eu-central-1.aws.neon.tech:5432/verceldb?sslmode=require&options=endpoint%3Dep-broken-tree-05982655"
-  destDBURL   = "postgresql://postgres.ylbjmqqjqifpfqcwtrpn:dUspyj-gahzec-madty9@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+  sourceDBURL = "verceldb"
+  destDBURL   = "supabase"
 )
 
 func fetchDataFromSource(db *sql.DB) ([][]interface{}, error) {

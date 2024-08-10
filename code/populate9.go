@@ -12,7 +12,7 @@ import (
 )
 
 // Database connection URL
-const dbURL = "postgresql://postgres.ylbjmqqjqifpfqcwtrpn:dUspyj-gahzec-madty9@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require"
+const dbURL = "sup"
 
 func connectDB() (*sql.DB, error) {
   return sql.Open("postgres", dbURL)
