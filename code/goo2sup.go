@@ -5,7 +5,9 @@ import (
   "fmt"
   "log"
   "os"
+  "time"
 
+  h3 "github.com/uber/h3-go/v3"
   "github.com/joho/godotenv"
   _ "github.com/lib/pq"
 )
@@ -42,21 +44,12 @@ func fetchDataFromSource(db *sql.DB) ([][]interface{}, error) {
       longitude float64
       visits    sql.NullInt64
       h3l7      sql.NullString
-      lastVisit sql.NullString
+      lastVisit sql.NullTime
     )
     if err := rows.Scan(&city, &latitude, &longitude, &visits, &h3l7, &lastVisit); err != nil {
       return nil, fmt.Errorf("failed to scan row: %w", err)
     }
-    row := []interface{}{city, latitude, longitude, nil, nil, nil}
-    if visits.Valid {
-      row[3] = visits.Int64
-    }
-    if h3l7.Valid {
-      row[4] = h3l7.String
-    }
-    if lastVisit.Valid {
-      row[5] = lastVisit.String
-    }
+    row := []interface{}{city, latitude, longitude, visits, h3l7.String, lastVisit}
     data = append(data, row)
   }
   if err := rows.Err(); err != nil {
@@ -73,7 +66,7 @@ func insertOrUpdateData(db *sql.DB, data [][]interface{}) error {
   }
   defer tx.Rollback()
 
-  stmtCheck, err := tx.Prepare("SELECT visits FROM cities_with_users WHERE h3l7=$1")
+  stmtCheck, err := tx.Prepare("SELECT city, last_visit FROM cities_with_users WHERE h3l7=$1")
   if err != nil {
     return fmt.Errorf("failed to prepare check statement: %w", err)
   }
@@ -85,16 +78,32 @@ func insertOrUpdateData(db *sql.DB, data [][]interface{}) error {
   }
   defer stmtInsert.Close()
 
-  stmtUpdate, err := tx.Prepare("UPDATE cities_with_users SET latitude=$1, longitude=$2, visits=$3, last_visit=$4 WHERE h3l7=$5")
+  stmtUpdate, err := tx.Prepare("UPDATE cities_with_users SET latitude=$1, longitude=$2, visits=$3, last_visit=$4 WHERE city=$5 AND h3l7=$6")
   if err != nil {
     return fmt.Errorf("failed to prepare update statement: %w", err)
   }
   defer stmtUpdate.Close()
 
+  // Prepare statements for h3_level_9 table
+  stmtInsertH3, err := tx.Prepare("INSERT INTO h3_level_9 (h3_index, visits, last_visit) VALUES ($1, $2, $3) ON CONFLICT (h3_index) DO UPDATE SET visits=$2, last_visit=$3")
+  if err != nil {
+    return fmt.Errorf("failed to prepare insert statement for h3_level_9: %w", err)
+  }
+  defer stmtInsertH3.Close()
+
   updateCounter := 0
   maxUpdates := 100
 
+  // Define cutoff date: August 2024
+  cutoffDate := time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
+
   for _, row := range data {
+    // Check if `last_visit` is after August 2024
+    srcLastVisit := row[5].(sql.NullTime).Time
+    if srcLastVisit.Before(cutoffDate) {
+      continue
+    }
+
     if updateCounter >= maxUpdates {
       log.Printf("Reached the maximum number of updates: %d\n", maxUpdates)
       break
@@ -105,38 +114,52 @@ func insertOrUpdateData(db *sql.DB, data [][]interface{}) error {
       return fmt.Errorf("h3l7 is not a string: %v", row[4])
     }
 
-    var destVisits sql.NullInt64
+    city := row[0].(string)
+    var destCity string
+    var destLastVisit sql.NullTime
 
-    err := stmtCheck.QueryRow(h3l7).Scan(&destVisits)
+    err := stmtCheck.QueryRow(h3l7).Scan(&destCity, &destLastVisit)
     if err != nil {
       if err == sql.ErrNoRows {
         // No row with this h3l7 value, so we can insert
-        if _, err := stmtInsert.Exec(row...); err != nil {
+        if _, err := stmtInsert.Exec(row[0], row[1], row[2], row[3], row[4], row[5]); err != nil {
           return fmt.Errorf("failed to execute insert statement: %w", err)
         }
-        log.Printf("Inserted row: %v\n", row)
+        log.Printf("Inserted row: city=%s, h3l7=%s, last_visit=%s\n", city, h3l7, srcLastVisit)
         updateCounter++
       } else {
         // Unexpected error
         return fmt.Errorf("failed to check for existing row: %w", err)
       }
     } else {
-      // Row exists, compare visits
-      srcVisits := row[3].(int64)
-      if destVisits.Valid == false || srcVisits > destVisits.Int64 {
-        // Source visits are higher, update latitude, longitude, visits, and last_visit
-        if row[5] != nil {
-          lastVisit, ok := row[5].(string)
-          if !ok {
-            log.Printf("Skipping update for row: %v as last_visit is not a string\n", row)
-            continue // Skip this update
-          }
-          if _, err := stmtUpdate.Exec(row[1], row[2], srcVisits, lastVisit, h3l7); err != nil {
-            return fmt.Errorf("failed to execute update statement: %w", err)
-          }
-          log.Printf("Updated latitude, longitude, visits, and last_visit for h3l7=%s: %v\n", h3l7, row)
-          updateCounter++
+      // Row exists, compare last_visit and city
+      if destCity == city && (!destLastVisit.Valid || srcLastVisit.After(destLastVisit.Time)) {
+        // Source last_visit is newer, update latitude, longitude, visits, and last_visit
+        if _, err := stmtUpdate.Exec(row[1], row[2], row[3], srcLastVisit, city, h3l7); err != nil {
+          return fmt.Errorf("failed to execute update statement: %w", err)
         }
+        log.Printf("Updated city=%s, h3l7=%s, last_visit=%s\n", city, h3l7, srcLastVisit)
+
+        // Calculate H3 index and update h3_level_9 table
+        lat := row[1].(float64)
+        lng := row[2].(float64)
+        h3Index := h3.FromGeo(h3.GeoCoord{Latitude: lat, Longitude: lng}, 9)
+
+        // Convert the H3 index to a hexadecimal string for logging
+        h3IndexStr := h3.ToString(h3Index)
+
+        // Extract visits
+        visits := 0
+        if row[3].(sql.NullInt64).Valid {
+          visits = int(row[3].(sql.NullInt64).Int64)
+        }
+
+        if _, err := stmtInsertH3.Exec(h3IndexStr, visits, srcLastVisit); err != nil {
+          return fmt.Errorf("failed to execute insert statement for h3_level_9: %w", err)
+        }
+        log.Printf("Updated h3_level_9: h3_index=%s, visits=%d, last_visit=%s\n", h3IndexStr, visits, srcLastVisit)
+
+        updateCounter++
       }
     }
   }
