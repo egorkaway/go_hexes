@@ -1,55 +1,79 @@
 [
   {
-    "h3_index": "8111bffffffffff",
-    "visits": 8
+    "h3_index": "81397ffffffffff",
+    "visits": 33
   },
   {
-    "h3_index": "8108bffffffffff",
-    "visits": 4
+    "h3_index": "81193ffffffffff",
+    "visits": 13
   },
   {
-    "h3_index": "81187ffffffffff",
-    "visits": 91
+    "h3_index": "81387ffffffffff",
+    "visits": 6
   },
   {
     "h3_index": "811ebffffffffff",
-    "visits": 14
+    "visits": 15
   },
   {
-    "h3_index": "81397ffffffffff",
+    "h3_index": "81187ffffffffff",
+    "visits": 93
+  },
+  {
+    "h3_index": "811e3ffffffffff",
     "visits": 29
+  },
+  {
+    "h3_index": "81393ffffffffff",
+    "visits": 398
+  },
+  {
+    "h3_index": "81383ffffffffff",
+    "visits": 5
+  },
+  {
+    "h3_index": "811e7ffffffffff",
+    "visits": 52
+  },
+  {
+    "h3_index": "811efffffffffff",
+    "visits": 38
+  },
+  {
+    "h3_index": "81197ffffffffff",
+    "visits": 163
   },
   {
     "h3_index": "81113ffffffffff",
     "visits": 2
   },
   {
+    "h3_index": "812cfffffffffff",
+    "visits": 1
+  },
+  {
     "h3_index": "812d7ffffffffff",
     "visits": 7
   },
   {
-    "h3_index": "81387ffffffffff",
-    "visits": 5
+    "h3_index": "813e7ffffffffff",
+    "visits": 7
   },
   {
-    "h3_index": "81347ffffffffff",
-    "visits": 1
+    "h3_index": "811f3ffffffffff",
+    "visits": 14
   },
   {
-    "h3_index": "812c3ffffffffff",
-    "visits": 33
+    "h3_index": "811fbffffffffff",
+    "visits": 64
   },
   {
     "h3_index": "813fbffffffffff",
     "visits": 1
   },
   {
-    "h3_index": "813f7ffffffffff",
-    "visits": 12
-  },
-  {
-    "h3_index": "813e7ffffffffff",
-    "visits": 7
+    "h3_index": "8108bffffffffff",
+    "visits": 4
   },
   {
     "h3_index": "812dbffffffffff",
@@ -57,58 +81,38 @@
   },
   {
     "h3_index": "81183ffffffffff",
-    "visits": 17
-  },
-  {
-    "h3_index": "812d3ffffffffff",
-    "visits": 23
-  },
-  {
-    "h3_index": "811f3ffffffffff",
-    "visits": 14
-  },
-  {
-    "h3_index": "811f7ffffffffff",
-    "visits": 113
-  },
-  {
-    "h3_index": "811fbffffffffff",
-    "visits": 55
-  },
-  {
-    "h3_index": "811efffffffffff",
-    "visits": 35
-  },
-  {
-    "h3_index": "81193ffffffffff",
-    "visits": 13
-  },
-  {
-    "h3_index": "811e7ffffffffff",
-    "visits": 35
-  },
-  {
-    "h3_index": "81393ffffffffff",
-    "visits": 393
-  },
-  {
-    "h3_index": "811e3ffffffffff",
-    "visits": 25
-  },
-  {
-    "h3_index": "81197ffffffffff",
-    "visits": 153
+    "visits": 19
   },
   {
     "h3_index": "81533ffffffffff",
     "visits": 2
   },
   {
+    "h3_index": "813f7ffffffffff",
+    "visits": 12
+  },
+  {
+    "h3_index": "812c3ffffffffff",
+    "visits": 35
+  },
+  {
+    "h3_index": "811f7ffffffffff",
+    "visits": 113
+  },
+  {
+    "h3_index": "812d3ffffffffff",
+    "visits": 24
+  },
+  {
+    "h3_index": "8111bffffffffff",
+    "visits": 9
+  },
+  {
     "h3_index": "812cbffffffffff",
     "visits": 29
   },
   {
-    "h3_index": "81383ffffffffff",
-    "visits": 5
+    "h3_index": "81347ffffffffff",
+    "visits": 1
   }
 ]
