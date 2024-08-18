@@ -92,7 +92,7 @@ func insertOrUpdateData(db *sql.DB, data [][]interface{}) error {
   defer stmtInsertH3.Close()
 
   updateCounter := 0
-  maxUpdates := 100
+  maxUpdates := 250
 
   // Define cutoff date: August 2024
   cutoffDate := time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)

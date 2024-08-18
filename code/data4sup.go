@@ -73,7 +73,7 @@ func shouldIncludePoint(lat, lon, nwLat, nwLon, seLat, seLon float64) bool {
 }
 
 func fetchDataForLevel(db *sql.DB, table string, minLat, minLon, maxLat, maxLon float64) ([][4]interface{}, error) {
-  query := "SELECT latitude, longitude, visits, last_visit FROM cities_with_users WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+  query := "SELECT latitude, longitude, visits, last_visit FROM cities_with_users WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND visits > 1"
   if maxLat != 0 && maxLon != 0 {
     query += fmt.Sprintf(" AND latitude <= %f AND latitude >= %f AND longitude >= %f AND longitude <= %f", minLat, maxLat, minLon, maxLon)
   }
@@ -95,7 +95,7 @@ func fetchDataForLevel(db *sql.DB, table string, minLat, minLon, maxLat, maxLon 
     }
 
     if (maxLat == 0 && maxLon == 0) || shouldIncludePoint(lat, lon, minLat, minLon, maxLat, maxLon) {
-      if visits.Valid && visits.Int64 > 0 && lastVisit.Valid {
+      if visits.Valid && visits.Int64 > 1 && lastVisit.Valid {
         data = append(data, [4]interface{}{lat, lon, visits, lastVisit.Time})
       }
     }
@@ -211,6 +211,7 @@ func main() {
     seLat float64
     seLon float64
   }{
+    {2, "h3_level_2", 0, 0, 0, 0},
     {3, "h3_level_3", 0, 0, 0, 0},
     {4, "h3_level_4", NW_CORNER_LEVEL4_LAT, NW_CORNER_LEVEL4_LON, SE_CORNER_LEVEL4_LAT, SE_CORNER_LEVEL4_LON},
     {5, "h3_level_5", NW_CORNER_LEVEL5_LAT, NW_CORNER_LEVEL5_LON, SE_CORNER_LEVEL5_LAT, SE_CORNER_LEVEL5_LON},
@@ -221,12 +222,12 @@ func main() {
   // Prompt for starting level to process
   var startLevel int
   for {
-    fmt.Println("Enter the starting level (3, 4, 5, 7): ")
+    fmt.Println("Enter the starting level (2, 3, 4, 5, 7): ")
     _, err := fmt.Scanln(&startLevel)
-    if err == nil && (startLevel == 3 || startLevel == 4 || startLevel == 5 || startLevel == 7) {
+    if err == nil && (startLevel == 2 || startLevel == 3 || startLevel == 4 || startLevel == 5 || startLevel == 7) {
       break
     }
-    fmt.Println("Invalid input. Please enter a valid level (3, 4, 5, or 7).")
+    fmt.Println("Invalid input. Please enter a valid level (2, 3, 4, 5, or 7).")
   }
 
   for _, level := range levels {

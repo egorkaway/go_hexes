@@ -175,6 +175,7 @@ func main() {
     tableName   string
     hasLastVisit bool
   }{
+    {2, "h3_level_2", true},
     {3, "h3_level_3", true},
     {4, "h3_level_4", true},
     {5, "h3_level_5", true},
