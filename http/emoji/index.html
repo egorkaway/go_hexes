@@ -78,9 +78,9 @@
               var fillColor = getColor(temperature);
               return {
                 color: "none",        // Hexagon border color
-                weight: 0.3,          // Thin border weight
+                weight: 0.2,          // Thin border weight
                 fillColor: fillColor,
-                fillOpacity: 0.07
+                fillOpacity: 0.05
               };
             },
             onEachFeature: function (feature, layer) {
@@ -88,7 +88,7 @@
               var temperature = feature.properties.temperature;
               var temp_min = feature.properties.temp_min;
               var temp_max = feature.properties.temp_max;
-              var fontSize = '14px';
+              var fontSize = '18px';
 
               if (temp_min === temp_max) {
                 temp_max += 1; // Show temp_max as one degree higher if they're the same
