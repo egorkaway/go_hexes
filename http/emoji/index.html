@@ -1,20 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
   <title>Europe H3 Weather Visualization with Emoji</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+  <meta charset='utf-8'> <!-- Ensure UTF-8 encoding -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- MapLibre GL CSS and JS -->
+  <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.css' />
+  <script src='https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.js'></script>
+
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-    }
-    #map {
-      height: 100vh;
-      width: 100%;
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; } /* Use a font that supports emojis */
+    html, body, #map { height: 100%; }
+    .maplibregl-ctrl {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+      z-index: 1;
     }
     .emoji-label {
-      white-space: nowrap; /* Prevent breaking of the string */
+      white-space: nowrap;
+      font-size: 26px;
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'Arial Unicode MS', sans-serif; /* Specify a fallback font for emoji */
     }
     .popup-content {
       text-align: center;
@@ -35,18 +45,57 @@
 </head>
 <body>
   <div id="map"></div>
+  <div id="basemap-control" class="maplibregl-ctrl">
+    <label for="basemap-select">Choose Basemap:</label>
+    <select id="basemap-select">
+      <option value="positron">CartoDB Positron</option>
+      <option value="dark-matter">CartoDB Dark Matter</option>
+      <option value="opentopomap">OpenTopoMap</option>
+    </select>
+  </div>
 
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
-    var map = L.map('map');
+    const basemaps = {
+      'positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      'dark-matter': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      'opentopomap': {
+        "version": 8,
+        "sources": {
+          "opentopomap": {
+            "type": "raster",
+            "tiles": [
+              "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+              "https://b.tile.opentopomap.org/{z}/{x}/{y}.png",
+              "https://c.tile.opentopomap.org/{z}/{x}/{y}.png"
+            ],
+            "tileSize": 256,
+            "attribution": "Map data © OpenStreetMap contributors, CC-BY-SA. Tiles courtesy of OpenTopoMap.org."
+          }
+        },
+        "layers": [
+          {
+            "id": "opentopomap",
+            "type": "raster",
+            "source": "opentopomap",
+            "minzoom": 0,
+            "maxzoom": 22
+          }
+        ]
+      }
+    };
 
-    // Add the Esri World Imagery basemap
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 19
-    }).addTo(map);
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: basemaps['positron'],
+      center: [0, 0],
+      zoom: 3,
+      maplibreLogo: true
+    });
 
-    var geojsonLayer = null;
+    document.getElementById('basemap-select').addEventListener('change', (event) => {
+      const selectedStyle = event.target.value;
+      map.setStyle(basemaps[selectedStyle]);
+    });
 
     function getColor(temperature) {
       const maxTemp = 40;
@@ -57,92 +106,116 @@
       return `hsl(${hue}, 100%, 50%)`;
     }
 
-    function loadGeoJSON() {
-      var geojsonFile = 'emoji.geojson'; // Ensure this path is correct
+    // Function to get the centroid of a polygon (using simple average method)
+    function getCentroid(coords) {
+      let centroid = [0, 0];
+      let signedArea = 0;
+      let x0 = 0; // Current vertex X
+      let y0 = 0; // Current vertex Y
+      let x1 = 0; // Next vertex X
+      let y1 = 0; // Next vertex Y
+      let a = 0;  // Partial signed area
 
-      fetch(geojsonFile)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          if (geojsonLayer) {
-            map.removeLayer(geojsonLayer);
-          }
+      for (let i = 0; i < coords.length - 1; i++) {
+        x0 = coords[i][0];
+        y0 = coords[i][1];
+        x1 = coords[i + 1][0];
+        y1 = coords[i + 1][1];
+        a = x0 * y1 - x1 * y0;
+        signedArea += a;
+        centroid[0] += (x0 + x1) * a;
+        centroid[1] += (y0 + y1) * a;
+      }
 
-          geojsonLayer = L.geoJSON(data, {
-            style: function (feature) {
-              var temperature = feature.properties.temperature;
-              var fillColor = getColor(temperature);
-              return {
-                color: "none",        // Hexagon border color
-                weight: 0.2,          // Thin border weight
-                fillColor: fillColor,
-                fillOpacity: 0.05
-              };
-            },
-            onEachFeature: function (feature, layer) {
-              var emoji = feature.properties.emoji;
-              var temperature = feature.properties.temperature;
-              var temp_min = feature.properties.temp_min;
-              var temp_max = feature.properties.temp_max;
-              var fontSize = '18px';
+      signedArea *= 0.5;
+      centroid[0] /= (6.0 * signedArea);
+      centroid[1] /= (6.0 * signedArea);
 
-              if (temp_min === temp_max) {
-                temp_max += 1; // Show temp_max as one degree higher if they're the same
-              }
-
-              var label = L.divIcon({
-                className: 'emoji-label',
-                html: `<div style="font-size: ${fontSize};">${emoji}</div>`
-              });
-
-              var coords = feature.geometry.coordinates[0];
-              var latlngs = coords.map(function(c) { return [c[1], c[0]]; });
-              var polygon = L.polygon(latlngs);
-              var center = polygon.getBounds().getCenter();
-
-              L.marker(center, { icon: label }).addTo(map);
-
-              layer.on('click', function () {
-                var popupContent = `
-                  <div class="popup-content">
-                    <div style="font-size:24px;">${emoji}</div>
-                    <div style="font-size:26px;">${Math.round(temperature)}°C</div>
-                    <div>↓${Math.round(temp_min)}°C ... ↑${Math.round(temp_max)}°C</div>
-                    <button onclick="this.style.display='none'">Ask Locals to Confirm</button>
-                  </div>
-                `;
-                layer.bindPopup(popupContent).openPopup();
-              });
-
-              layer.on('click', function(e) {
-                e.originalEvent._clickedLayer = true;
-              });
-            }
-          }).addTo(map);
-
-          // Fit the map bounds to the GeoJSON layer
-          map.fitBounds(geojsonLayer.getBounds());
-        })
-        .catch(error => {
-          console.error('Error fetching the GeoJSON data:', error);
-        });
+      return centroid;
     }
 
-    // Load the GeoJSON data
-    loadGeoJSON();
+    function loadGeoJSON() {
+      fetch('emoji.geojson')
+        .then(response => response.json())
+        .then(data => {
+          data.features.forEach(feature => {
+            // Calculate and set the fillColor property directly to GeoJSON features
+            feature.properties.fillColor = getColor(feature.properties.temperature);
+          });
 
-    // Add a map click event to show a popup if clicking outside of a hex
+          map.addSource('emoji-geojson', {
+            'type': 'geojson',
+            'data': data
+          });
+
+          map.addLayer({
+            'id': 'polygon-layer',
+            'type': 'fill',
+            'source': 'emoji-geojson',
+            'paint': {
+              'fill-color': ['get', 'fillColor'],
+              'fill-opacity': 0.3 // Make polygons slightly more transparent
+            }
+          });
+
+          data.features.forEach(feature => {
+            const coords = feature.geometry.coordinates[0];
+            const centroid = getCentroid(coords);
+            const emoji = feature.properties.emoji;
+            const temperature = feature.properties.temperature;
+
+            const el = document.createElement('div');
+            el.className = 'emoji-label';
+            el.innerHTML = emoji;
+
+            new maplibregl.Marker({
+              element: el
+            })
+              .setLngLat(centroid)
+              .addTo(map);
+
+            el.addEventListener('click', () => {
+              const popupContent = `
+                <div class="popup-content">
+                  <div style="font-size:24px;">${emoji}</div>
+                  <div style="font-size:26px;">${Math.round(temperature)}°C</div>
+                  <div>↓${Math.round(feature.properties.temp_min)}°C ... ↑${Math.round(feature.properties.temp_max)}°C</div>
+                  <button onclick="this.style.display='none'">Ask Locals to Confirm</button>
+                </div>
+              `;
+
+              new maplibregl.Popup()
+                .setLngLat(centroid)
+                .setHTML(popupContent)
+                .addTo(map);
+            });
+          });
+
+          const bounds = new maplibregl.LngLatBounds();
+          data.features.forEach(feature => {
+            feature.geometry.coordinates[0].forEach(coord => {
+              bounds.extend(coord);
+            });
+          });
+          map.fitBounds(bounds, {
+            padding: 20
+          });
+        })
+        .catch(error => console.error('Error fetching the GeoJSON data:', error));
+    }
+
+    map.on('load', function () {
+      loadGeoJSON();
+    });
+
     map.on('click', function (e) {
-      if (e.originalEvent._clickedLayer) return;
-
-      var popup = L.popup()
-        .setLatLng(e.latlng)
-        .setContent('<div class="popup-content">No active users here, spread the word to get user reports for this location!</div>')
-        .openOn(map);
+      const features = map.queryRenderedFeatures(e.point);
+      if (!features.length) {
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML('<div class="popup-content">No active users here, spread the word to get user reports for this location!</div>')
+          .addTo(map);
+      }
     });
   </script>
 </body>
