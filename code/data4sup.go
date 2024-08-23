@@ -25,7 +25,6 @@ const (
 
   NW_CORNER_LEVEL6_7_LAT = 44.0
   NW_CORNER_LEVEL6_7_LON = -10.0
-  SE_CORNER_LEVEL6_7_LAT = 39.3
   SE_CORNER_LEVEL6_7_LON = -6.0
 )
 
@@ -202,7 +201,7 @@ func main() {
   }
   defer db.Close()
 
-  // Define levels
+  // Define levels, using the same bounding box for levels 3 and 4
   levels := []struct {
     level int
     table string
@@ -212,65 +211,66 @@ func main() {
     seLon float64
   }{
     {2, "h3_level_2", 0, 0, 0, 0},
-    {3, "h3_level_3", 0, 0, 0, 0},
+    {3, "h3_level_3", NW_CORNER_LEVEL4_LAT, NW_CORNER_LEVEL4_LON, SE_CORNER_LEVEL4_LAT, SE_CORNER_LEVEL4_LON},
     {4, "h3_level_4", NW_CORNER_LEVEL4_LAT, NW_CORNER_LEVEL4_LON, SE_CORNER_LEVEL4_LAT, SE_CORNER_LEVEL4_LON},
     {5, "h3_level_5", NW_CORNER_LEVEL5_LAT, NW_CORNER_LEVEL5_LON, SE_CORNER_LEVEL5_LAT, SE_CORNER_LEVEL5_LON},
-    // Removed level 6
     {7, "h3_level_7", NW_CORNER_LEVEL6_7_LAT, NW_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LON, SE_CORNER_LEVEL6_7_LON},
   }
 
-  // Prompt for starting level to process
-  var startLevel int
+  // Prompt for the level to process
+  var inputLevel int
   for {
-    fmt.Println("Enter the starting level (2, 3, 4, 5, 7): ")
-    _, err := fmt.Scanln(&startLevel)
-    if err == nil && (startLevel == 2 || startLevel == 3 || startLevel == 4 || startLevel == 5 || startLevel == 7) {
+    fmt.Println("Enter the level to process (2, 3, 4, 5, 7): ")
+    _, err := fmt.Scanln(&inputLevel)
+    if err == nil && (inputLevel == 2 || inputLevel == 3 || inputLevel == 4 || inputLevel == 5 || inputLevel == 7) {
       break
     }
     fmt.Println("Invalid input. Please enter a valid level (2, 3, 4, 5, or 7).")
   }
 
+  // Find and process the matching level
   for _, level := range levels {
-    if level.level < startLevel {
-      continue  // Skip levels less than the starting level
-    }
+    if level.level == inputLevel {
+      // Ensure the table exists before any operations
+      err = createTableIfNotExists(db, level.table)
+      if err != nil {
+        log.Fatalf("Failed to create table %s if not exists: %v", level.table, err)
+      }
 
-    // Ensure the table exists before any operations
-    err = createTableIfNotExists(db, level.table)
-    if err != nil {
-      log.Fatalf("Failed to create table %s if not exists: %v", level.table, err)
-    }
+      // Ensure the `last_visit` column exists
+      err = ensureLastVisitColumn(db, level.table)
+      if err != nil {
+        log.Fatalf("Failed to ensure last_visit column for table %s: %v", level.table, err)
+      }
 
-    // Ensure the `last_visit` column exists
-    err = ensureLastVisitColumn(db, level.table)
-    if err != nil {
-      log.Fatalf("Failed to ensure last_visit column for table %s: %v", level.table, err)
-    }
+      beforeCount, err := countRows(db, level.table)
+      if err != nil {
+        log.Fatalf("Failed to count rows in table %s before processing: %v", level.table, err)
+      }
+      log.Printf("Number of rows in table %s before processing: %d", level.table, beforeCount)
 
-    beforeCount, err := countRows(db, level.table)
-    if err != nil {
-      log.Fatalf("Failed to count rows in table %s before processing: %v", level.table, err)
-    }
-    log.Printf("Number of rows in table %s before processing: %d", level.table, beforeCount)
+      data, err := fetchDataForLevel(db, "cities_with_users", level.nwLat, level.nwLon, level.seLat, level.seLon)
+      if err != nil {
+        log.Fatalf("Failed to fetch data for level %d: %v", level.level, err)
+      }
 
-    data, err := fetchDataForLevel(db, "cities_with_users", level.nwLat, level.nwLon, level.seLat, level.seLon)
-    if err != nil {
-      log.Fatalf("Failed to fetch data for level %d: %v", level.level, err)
-    }
+      aggregatedData := aggregateData(data, level.level)
 
-    aggregatedData := aggregateData(data, level.level)
+      err = insertAggregatedData(db, level.table, aggregatedData)
+      if err != nil {
+        log.Fatalf("Failed to insert aggregated data for level %d: %v", level.level, err)
+      }
 
-    err = insertAggregatedData(db, level.table, aggregatedData)
-    if err != nil {
-      log.Fatalf("Failed to insert aggregated data for level %d: %v", level.level, err)
-    }
+      afterCount, err := countRows(db, level.table)
+      if err != nil {
+        log.Fatalf("Failed to count rows in table %s after processing: %v", level.table, err)
+      }
+      log.Printf("Number of rows in table %s after processing: %d", level.table, afterCount)
 
-    afterCount, err := countRows(db, level.table)
-    if err != nil {
-      log.Fatalf("Failed to count rows in table %s after processing: %v", level.table, err)
+      log.Printf("Successfully processed level %d.", inputLevel)
+      return
     }
-    log.Printf("Number of rows in table %s after processing: %d", level.table, afterCount)
   }
 
-  log.Println("Successfully aggregated and updated visits for selected levels.")
+  log.Println("No matching level found for the input provided.")
 }
