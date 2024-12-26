@@ -15,7 +15,7 @@ import (
 )
 
 // Directory to store exported files
-const exportDir = "export"
+const exportDir = "http/export"
 
 // H3Data struct represents the data structure to be exported
 type H3Data struct {
