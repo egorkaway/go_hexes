@@ -20,7 +20,7 @@ const exportDir = "export"
 // H3Data struct represents the data structure to be exported
 type H3Data struct {
     H3Index   string     `json:"h3_index"`
-    Visits    int        `json:"visits"`
+    Visits    int        `json:"total"`
     LastVisit *time.Time `json:"last_visit,omitempty"`
 }
 
